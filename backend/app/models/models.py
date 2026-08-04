@@ -1,0 +1,325 @@
+from sqlalchemy import Column, Integer, String, Boolean, Enum, ForeignKey, Text, Date, DateTime, Table, Float
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from ..core.db import Base
+
+class Department(Base):
+    __tablename__ = "departments"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    code = Column(String(10), unique=True, nullable=False, index=True)
+
+    teachers = relationship("Teacher", back_populates="department")
+    students = relationship("Student", back_populates="department")
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(100), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(Enum("student", "teacher", "hod", "admin"), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    teacher_profile = relationship("Teacher", uselist=False, back_populates="user", cascade="all, delete-orphan")
+    student_profile = relationship("Student", uselist=False, back_populates="user", cascade="all, delete-orphan")
+    created_announcements = relationship("Announcement", back_populates="creator")
+    notifications = relationship("Notification", back_populates="user")
+    activity_logs = relationship("ActivityLog", back_populates="user")
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    designation = Column(String(100), nullable=False)
+    joined_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="teacher_profile")
+    department = relationship("Department", back_populates="teachers")
+    students = relationship("Student", back_populates="guide", foreign_keys="[Student.guide_id]")
+    feedbacks = relationship("Feedback", back_populates="teacher")
+
+class Student(Base):
+    __tablename__ = "students"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    roll_number = Column(String(50), unique=True, nullable=False, index=True)
+    reg_number = Column(String(50), unique=True, nullable=False)
+    univ_roll_number = Column(String(50), unique=True, nullable=False)
+    mobile = Column(String(15))
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    year = Column(Integer, nullable=False)
+    semester = Column(Integer, nullable=False)
+    section = Column(String(10), nullable=False)
+    guide_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=True)
+    batch = Column(String(20))
+    skills = Column(Text) # Stored as JSON string
+    linkedin = Column(String(255))
+    github = Column(String(255))
+    resume_url = Column(String(255))
+    profile_pic_url = Column(String(255))
+    
+    # New profile and academic details columns
+    gender = Column(String(20))
+    date_of_birth = Column(String(50))
+    address = Column(Text)
+    college = Column(String(255), default="University College of Engineering")
+    program = Column(String(100), default="B.Tech")
+    class_name = Column(String(100))
+    admission_year = Column(Integer)
+    cgpa = Column(Float)
+
+    user = relationship("User", back_populates="student_profile")
+    department = relationship("Department", back_populates="students")
+    guide = relationship("Teacher", back_populates="students", foreign_keys=[guide_id])
+    projects = relationship("Project", back_populates="student", cascade="all, delete-orphan")
+    certificates = relationship("Certificate", back_populates="student", cascade="all, delete-orphan")
+    achievements = relationship("Achievement", back_populates="student", cascade="all, delete-orphan")
+    research_papers = relationship("ResearchPaper", back_populates="student", cascade="all, delete-orphan")
+    internships = relationship("Internship", back_populates="student", cascade="all, delete-orphan")
+    patents = relationship("Patent", back_populates="student", cascade="all, delete-orphan")
+    hackathons = relationship("Hackathon", back_populates="student", cascade="all, delete-orphan")
+    meetings = relationship("Meeting", back_populates="student", cascade="all, delete-orphan")
+    placement_records = relationship("PlacementRecord", back_populates="student", cascade="all, delete-orphan")
+
+class Project(Base):
+    __tablename__ = "projects"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False, index=True)
+    abstract = Column(Text)
+    description = Column(Text)
+    domain = Column(String(100), index=True)
+    category = Column(String(100))
+    technologies = Column(Text) # Comma-separated
+    difficulty_level = Column(Enum("beginner", "intermediate", "advanced"), default="intermediate")
+    team_size = Column(Integer, default=1)
+    github_repo = Column(String(255))
+    live_url = Column(String(255))
+    figma_url = Column(String(255))
+    doc_url = Column(String(255))
+    status = Column(Enum("pending_review", "approved", "revision_requested", "completed"), default="pending_review")
+    marks = Column(Integer, default=0)
+    start_date = Column(Date)
+    end_date = Column(Date)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    group_members = Column(Text) # JSON string listing member details (name, roll, contact, section)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    student = relationship("Student", back_populates="projects")
+    files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")
+    progress_updates = relationship("ProgressUpdate", back_populates="project", cascade="all, delete-orphan")
+    feedbacks = relationship("Feedback", back_populates="project", cascade="all, delete-orphan")
+    milestones = relationship("Milestone", back_populates="project", cascade="all, delete-orphan")
+    github_integration = relationship("GithubIntegration", uselist=False, back_populates="project", cascade="all, delete-orphan")
+
+class ProjectFile(Base):
+    __tablename__ = "project_files"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    file_type = Column(Enum("report_pdf", "ppt", "zip_code", "image", "video"), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    file_path = Column(String(255), nullable=False)
+    uploaded_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project", back_populates="files")
+
+class ProgressUpdate(Base):
+    __tablename__ = "progress_updates"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    week_number = Column(Integer, nullable=False)
+    work_done = Column(Text, nullable=False)
+    progress_percentage = Column(Integer, nullable=False)
+    hours_worked = Column(Integer, default=0)
+    challenges = Column(Text)
+    next_week_plan = Column(Text)
+    github_link = Column(String(255))
+    files_json = Column(Text) # JSON string array of upload paths/names
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    project = relationship("Project", back_populates="progress_updates")
+
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
+    rating = Column(Integer)
+    comments = Column(Text)
+    positive_points = Column(Text)
+    areas_of_improvement = Column(Text)
+    recommendations = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project", back_populates="feedbacks")
+    teacher = relationship("Teacher", back_populates="feedbacks")
+
+class Meeting(Base):
+    __tablename__ = "meetings"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    scheduled_at = Column(DateTime, nullable=False)
+    duration_minutes = Column(Integer, default=30)
+    join_url = Column(String(255))
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Enum("scheduled", "cancelled", "completed"), default="scheduled")
+    created_at = Column(DateTime, server_default=func.now())
+
+    student = relationship("Student", back_populates="meetings")
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = Column(Text, nullable=False)
+    sent_at = Column(DateTime, server_default=func.now())
+    is_read = Column(Boolean, default=False)
+
+class Certificate(Base):
+    __tablename__ = "certificates"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    issuing_organization = Column(String(255), nullable=False)
+    issue_date = Column(Date)
+    credential_id = Column(String(255))
+    credential_url = Column(String(255))
+
+    student = relationship("Student", back_populates="certificates")
+
+class Achievement(Base):
+    __tablename__ = "achievements"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    date = Column(Date)
+    achievement_type = Column(String(100))
+
+    student = relationship("Student", back_populates="achievements")
+
+class ResearchPaper(Base):
+    __tablename__ = "research_papers"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    journal = Column(String(255), nullable=False)
+    publication_date = Column(Date)
+    paper_url = Column(String(255))
+    authors = Column(String(255))
+
+    student = relationship("Student", back_populates="research_papers")
+
+class Internship(Base):
+    __tablename__ = "internships"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    company = Column(String(255), nullable=False)
+    role = Column(String(255), nullable=False)
+    start_date = Column(Date)
+    end_date = Column(Date)
+    description = Column(Text)
+
+    student = relationship("Student", back_populates="internships")
+
+class Patent(Base):
+    __tablename__ = "patents"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    patent_number = Column(String(100), unique=True, nullable=False)
+    status = Column(String(50))
+    publication_date = Column(Date)
+
+    student = relationship("Student", back_populates="patents")
+
+class Hackathon(Base):
+    __tablename__ = "hackathons"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), nullable=False)
+    project_title = Column(String(255))
+    result = Column(String(100))
+    date = Column(Date)
+
+    student = relationship("Student", back_populates="hackathons")
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    target_audience = Column(Enum("all", "students", "teachers"), default="all")
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    creator = relationship("User", back_populates="created_announcements")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    notification_type = Column(String(50))
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="notifications")
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    action = Column(String(255), nullable=False)
+    details = Column(Text)
+    timestamp = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="activity_logs")
+
+class Milestone(Base):
+    __tablename__ = "milestones"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    deadline = Column(String(100))
+    status = Column(Enum("pending", "in_progress", "completed"), default="pending")
+    marks = Column(Integer)
+    max_marks = Column(Integer, default=20)
+    feedback = Column(Text)
+
+    project = relationship("Project", back_populates="milestones")
+
+class GithubIntegration(Base):
+    __tablename__ = "github_integrations"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    repo_name = Column(String(255))
+    branch = Column(String(100), default="main")
+    commit_count = Column(Integer, default=0)
+    stars = Column(Integer, default=0)
+    issues = Column(Integer, default=0)
+    latest_commit = Column(String(255))
+
+    project = relationship("Project", back_populates="github_integration")
+
+class PlacementRecord(Base):
+    __tablename__ = "placement_records"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    company_name = Column(String(255), nullable=False)
+    role = Column(String(255))
+    status = Column(Enum("applied", "interviewing", "offered", "rejected"), default="applied")
+    salary_package = Column(String(100))
+    interview_date = Column(Date)
+    offer_letter_url = Column(String(255))
+
+    student = relationship("Student", back_populates="placement_records")

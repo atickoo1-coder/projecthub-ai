@@ -1,0 +1,34 @@
+# Ignore python virtual environments
+backend/venv/
+venv/
+.venv/
+env/
+
+# Ignore python caches
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Ignore node_modules
+frontend/node_modules/
+node_modules/
+
+# Ignore compiled frontend assets
+frontend/dist/
+dist/
+
+# Ignore database and environment configs
+backend/projecthub.db
+projecthub.db
+.env
+backend/.env
+frontend/.env
+
+# Ignore file uploads and temp files
+backend/uploads/
+uploads/
+.DS_Store
+Thumbs.db
+*.log
+.system_generated/
