@@ -817,7 +817,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           { id: 'progress', label: 'Weekly Reports', icon: Clock },
           { id: 'milestones', label: 'Milestones & Tasks', icon: CheckCircle },
           { id: 'files', label: 'File Locker', icon: UploadCloud },
-          { id: 'integrations', label: 'GitHub & Live', icon: Github },
+          { id: 'integrations', label: 'GitHub Integration Dashboard', icon: Github },
           { id: 'guide', label: 'Advisor Guide', icon: User },
           { id: 'placements', label: 'Placement Board', icon: Briefcase },
           { id: 'certificates', label: 'Certificates', icon: Award },

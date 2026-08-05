@@ -7,7 +7,7 @@ from .core.db import Base, engine, get_db
 from .core.security import get_current_user_payload
 from .models import models
 from .schemas import schemas
-from .routers import auth, projects, teachers, hod, admin, chat, meetings, ai, reports
+from .routers import auth, projects, teachers, hod, admin, chat, meetings, ai, reports, teacher_ops
 
 # Automatically create tables in MySQL/SQLite if they don't exist
 try:
@@ -42,6 +42,7 @@ app.include_router(chat.router)
 app.include_router(meetings.router)
 app.include_router(ai.router)
 app.include_router(reports.router)
+app.include_router(teacher_ops.router)
 
 # Serve uploaded deliverables statically
 os.makedirs("uploads", exist_ok=True)

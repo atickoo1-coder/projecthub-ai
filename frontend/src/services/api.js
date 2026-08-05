@@ -142,6 +142,89 @@ export const teacherAPI = {
       params: { status }
     });
     return res.data;
+  },
+  // Redesigned Teacher Dashboard API Extensions
+  getStats: async () => {
+    const res = await api.get('/teachers/ops/stats');
+    return res.data;
+  },
+  updateProfile: async (data) => {
+    const res = await api.put('/teachers/ops/profile', data);
+    return res.data;
+  },
+  getStudentsTree: async () => {
+    const res = await api.get('/teachers/ops/students-tree');
+    return res.data;
+  },
+  allocateProject: async (studentId, data) => {
+    const res = await api.post('/teachers/ops/allocate', data, {
+      params: { student_id: studentId }
+    });
+    return res.data;
+  },
+  reassignGuide: async (studentId, newGuideId) => {
+    const res = await api.post('/teachers/ops/reassign-guide', null, {
+      params: { student_id: studentId, new_guide_id: newGuideId }
+    });
+    return res.data;
+  },
+  getAllocationHistory: async () => {
+    const res = await api.get('/teachers/ops/allocation/history');
+    return res.data;
+  },
+  reviewAbstract: async (projectId, data) => {
+    const res = await api.post('/teachers/ops/abstract/review', data, {
+      params: { project_id: projectId }
+    });
+    return res.data;
+  },
+  evaluateAbstractAI: async (projectId) => {
+    const res = await api.post('/teachers/ops/abstract/evaluate-ai', null, {
+      params: { project_id: projectId }
+    });
+    return res.data;
+  },
+  reviewSynopsis: async (data) => {
+    const res = await api.post('/teachers/ops/synopsis/review', data);
+    return res.data;
+  },
+  reviewWeeklyProgress: async (data) => {
+    const res = await api.post('/teachers/ops/weekly/review', data);
+    return res.data;
+  },
+  reviewReport: async (data) => {
+    const res = await api.post('/teachers/ops/report/review', data);
+    return res.data;
+  },
+  evaluateReportAI: async (projectId, reportType) => {
+    const res = await api.post('/teachers/ops/report/evaluate-ai', null, {
+      params: { project_id: projectId, report_type: reportType }
+    });
+    return res.data;
+  },
+  checkPlagiarism: async (projectId) => {
+    const res = await api.post('/teachers/ops/plagiarism/check', null, {
+      params: { project_id: projectId }
+    });
+    return res.data;
+  },
+  evaluateViva: async (data) => {
+    const res = await api.post('/teachers/ops/viva/evaluate', data);
+    return res.data;
+  },
+  evaluateRubric: async (data) => {
+    const res = await api.post('/teachers/ops/rubrics/evaluate', data);
+    return res.data;
+  },
+  recommendRubricMarksAI: async (projectId) => {
+    const res = await api.post('/teachers/ops/rubrics/recommend-ai', null, {
+      params: { project_id: projectId }
+    });
+    return res.data;
+  },
+  getExportUrl: (reportType) => {
+    const token = localStorage.getItem('token');
+    return `${API_URL}/teachers/ops/export?report_type=${reportType}&token=${token}`;
   }
 };
 

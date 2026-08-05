@@ -54,6 +54,13 @@ class UserOut(UserBase):
 class TeacherBase(BaseModel):
     department_id: int
     designation: str
+    employee_id: Optional[str] = None
+    qualification: Optional[str] = None
+    research_area: Optional[str] = None
+    phone: Optional[str] = None
+    office_location: Optional[str] = None
+    office_hours: Optional[str] = None
+    profile_pic_url: Optional[str] = None
 
 class TeacherCreate(TeacherBase):
     name: str
@@ -63,6 +70,13 @@ class TeacherCreate(TeacherBase):
 class TeacherOut(BaseModel):
     id: int
     designation: str
+    employee_id: Optional[str] = None
+    qualification: Optional[str] = None
+    research_area: Optional[str] = None
+    phone: Optional[str] = None
+    office_location: Optional[str] = None
+    office_hours: Optional[str] = None
+    profile_pic_url: Optional[str] = None
     department: DepartmentOut
     user: UserOut
     class Config:
@@ -433,5 +447,178 @@ class PlacementRecordCreate(PlacementRecordBase):
 class PlacementRecordOut(PlacementRecordBase):
     id: int
     student_id: int
+    class Config:
+        from_attributes = True
+
+# AbstractReview Schemas
+class AbstractReviewBase(BaseModel):
+    project_id: int
+    status: Optional[str] = "pending_review"
+    marks: Optional[int] = 0
+    remarks: Optional[str] = None
+    version: Optional[int] = 1
+    abstract_text: Optional[str] = None
+
+class AbstractReviewCreate(BaseModel):
+    project_id: int
+    abstract_text: str
+
+class AbstractReviewEvaluate(BaseModel):
+    status: str
+    marks: int
+    remarks: str
+
+class AbstractReviewOut(AbstractReviewBase):
+    id: int
+    reviewed_at: datetime
+    class Config:
+        from_attributes = True
+
+# SynopsisReview Schemas
+class SynopsisReviewBase(BaseModel):
+    project_id: int
+    status: Optional[str] = "pending_review"
+    problem_statement: Optional[str] = None
+    objectives: Optional[str] = None
+    literature_survey: Optional[str] = None
+    proposed_methodology: Optional[str] = None
+    expected_outcomes: Optional[str] = None
+    remarks: Optional[str] = None
+
+class SynopsisReviewCreate(SynopsisReviewBase):
+    pass
+
+class SynopsisReviewEvaluate(BaseModel):
+    status: str
+    remarks: str
+
+class SynopsisReviewOut(SynopsisReviewBase):
+    id: int
+    reviewed_at: datetime
+    class Config:
+        from_attributes = True
+
+# WeeklyReview Schemas
+class WeeklyReviewBase(BaseModel):
+    progress_update_id: int
+    status: str
+    feedback: Optional[str] = None
+
+class WeeklyReviewCreate(WeeklyReviewBase):
+    pass
+
+class WeeklyReviewOut(WeeklyReviewBase):
+    id: int
+    reviewed_at: datetime
+    class Config:
+        from_attributes = True
+
+# ReportReview Schemas
+class ReportReviewBase(BaseModel):
+    project_id: int
+    report_type: str
+    status: Optional[str] = "pending"
+    feedback: Optional[str] = None
+    annotations: Optional[str] = None
+    version: Optional[int] = 1
+
+class ReportReviewCreate(ReportReviewBase):
+    pass
+
+class ReportReviewOut(ReportReviewBase):
+    id: int
+    reviewed_at: datetime
+    class Config:
+        from_attributes = True
+
+# PlagiarismReport Schemas
+class PlagiarismReportBase(BaseModel):
+    project_id: int
+    similarity_percentage: Optional[float] = 0.0
+    status: Optional[str] = "pending_review"
+    sources_json: Optional[str] = None
+    matched_paragraphs_json: Optional[str] = None
+    ai_content_percentage: Optional[float] = 0.0
+    risk_level: Optional[str] = "low"
+    ai_summary: Optional[str] = None
+
+class PlagiarismReportCreate(PlagiarismReportBase):
+    pass
+
+class PlagiarismReportOut(PlagiarismReportBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# VivaMark Schemas
+class VivaMarkBase(BaseModel):
+    student_id: int
+    project_id: int
+    questions_asked: Optional[str] = None
+    student_answers: Optional[str] = None
+    marks: Optional[int] = 0
+    remarks: Optional[str] = None
+    audio_url: Optional[str] = None
+
+class VivaMarkCreate(VivaMarkBase):
+    pass
+
+class VivaMarkOut(VivaMarkBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# Rubric Schemas
+class RubricBase(BaseModel):
+    project_id: int
+    student_id: int
+    problem_definition: Optional[int] = 0
+    literature_survey: Optional[int] = 0
+    innovation: Optional[int] = 0
+    design: Optional[int] = 0
+    coding: Optional[int] = 0
+    testing: Optional[int] = 0
+    documentation: Optional[int] = 0
+    presentation: Optional[int] = 0
+    viva: Optional[int] = 0
+    total_marks: Optional[int] = 0
+    remarks: Optional[str] = None
+
+class RubricCreate(RubricBase):
+    pass
+
+class RubricOut(RubricBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# AIReview Schemas
+class AIReviewBase(BaseModel):
+    project_id: int
+    review_type: str
+    quality_metrics_json: Optional[str] = None
+    suggestions: Optional[str] = None
+    original_text: Optional[str] = None
+
+class AIReviewCreate(AIReviewBase):
+    pass
+
+class AIReviewOut(AIReviewBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# Analytics Schemas
+class AnalyticsBase(BaseModel):
+    metric_key: str
+    metric_value: str
+
+class AnalyticsOut(AnalyticsBase):
+    id: int
+    updated_at: datetime
     class Config:
         from_attributes = True

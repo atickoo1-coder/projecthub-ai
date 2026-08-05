@@ -36,6 +36,15 @@ class Teacher(Base):
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
     designation = Column(String(100), nullable=False)
     joined_at = Column(DateTime, server_default=func.now())
+    
+    # New teacher details columns
+    employee_id = Column(String(50), unique=True, nullable=True)
+    qualification = Column(String(255), default="Ph.D.")
+    research_area = Column(Text, default="Software Engineering, Distributed Systems")
+    phone = Column(String(20), default="+1-555-0199")
+    office_location = Column(String(255), default="Block C, Room 302")
+    office_hours = Column(String(255), default="Mon/Wed/Fri 2:00 PM - 4:00 PM")
+    profile_pic_url = Column(String(255))
 
     user = relationship("User", back_populates="teacher_profile")
     department = relationship("Department", back_populates="teachers")
@@ -323,3 +332,124 @@ class PlacementRecord(Base):
     offer_letter_url = Column(String(255))
 
     student = relationship("Student", back_populates="placement_records")
+
+class AbstractReview(Base):
+    __tablename__ = "abstract_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String(50), default="pending_review") # approved, rejected, revision_requested, pending_review
+    marks = Column(Integer, default=0)
+    remarks = Column(Text)
+    version = Column(Integer, default=1)
+    abstract_text = Column(Text)
+    reviewed_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class SynopsisReview(Base):
+    __tablename__ = "synopsis_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String(50), default="pending_review") # approved, rejected, revision_requested
+    problem_statement = Column(Text)
+    objectives = Column(Text)
+    literature_survey = Column(Text)
+    proposed_methodology = Column(Text)
+    expected_outcomes = Column(Text)
+    remarks = Column(Text)
+    reviewed_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class WeeklyReview(Base):
+    __tablename__ = "weekly_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    progress_update_id = Column(Integer, ForeignKey("progress_updates.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String(50), default="approved") # approved, rejected, revision_requested
+    feedback = Column(Text)
+    reviewed_at = Column(DateTime, server_default=func.now())
+
+    progress_update = relationship("ProgressUpdate")
+
+class ReportReview(Base):
+    __tablename__ = "report_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    report_type = Column(String(50), nullable=False) # srs, design_document, mid_review, final_report, ppt, poster
+    status = Column(String(50), default="pending") # pending, approved, revision_requested, rejected
+    feedback = Column(Text)
+    annotations = Column(Text) # JSON string representation
+    version = Column(Integer, default=1)
+    reviewed_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class PlagiarismReport(Base):
+    __tablename__ = "plagiarism_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    similarity_percentage = Column(Float, default=0.0)
+    status = Column(String(50), default="pending_review") # acceptable, high_risk, pending_review
+    sources_json = Column(Text) # JSON string listing matched sources
+    matched_paragraphs_json = Column(Text) # JSON string listing matched paragraphs
+    ai_content_percentage = Column(Float, default=0.0)
+    risk_level = Column(String(20), default="low") # low, medium, high
+    ai_summary = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class VivaMark(Base):
+    __tablename__ = "viva_marks"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    questions_asked = Column(Text) # JSON list
+    student_answers = Column(Text) # JSON list
+    marks = Column(Integer, default=0)
+    remarks = Column(Text)
+    audio_url = Column(String(255))
+    created_at = Column(DateTime, server_default=func.now())
+
+    student = relationship("Student")
+    project = relationship("Project")
+
+class Rubric(Base):
+    __tablename__ = "rubrics"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    problem_definition = Column(Integer, default=0)
+    literature_survey = Column(Integer, default=0)
+    innovation = Column(Integer, default=0)
+    design = Column(Integer, default=0)
+    coding = Column(Integer, default=0)
+    testing = Column(Integer, default=0)
+    documentation = Column(Integer, default=0)
+    presentation = Column(Integer, default=0)
+    viva = Column(Integer, default=0)
+    total_marks = Column(Integer, default=0)
+    remarks = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+    student = relationship("Student")
+
+class AIReview(Base):
+    __tablename__ = "ai_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    review_type = Column(String(50)) # abstract, report, plagiarism
+    quality_metrics_json = Column(Text)
+    suggestions = Column(Text)
+    original_text = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class Analytics(Base):
+    __tablename__ = "analytics"
+    id = Column(Integer, primary_key=True, index=True)
+    metric_key = Column(String(100), unique=True, index=True)
+    metric_value = Column(Text)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

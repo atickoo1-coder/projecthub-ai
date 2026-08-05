@@ -5,14 +5,11 @@ from app.core.security import get_password_hash
 
 def seed_db():
     # Create tables
+    print("Dropping tables...")
+    Base.metadata.drop_all(bind=engine)
+    print("Creating tables...")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    
-    # Check if database is already seeded
-    if db.query(models.User).first() is not None:
-        print("Database already seeded.")
-        db.close()
-        return
 
     print("Seeding database...")
     
@@ -45,9 +42,42 @@ def seed_db():
     
     # Add Teachers
     teachers = [
-        models.Teacher(id=1, user_id=2, department_id=1, designation="Professor & HOD"),
-        models.Teacher(id=2, user_id=3, department_id=2, designation="Assistant Professor"),
-        models.Teacher(id=3, user_id=4, department_id=1, designation="Associate Professor")
+        models.Teacher(
+            id=1,
+            user_id=2,
+            department_id=1,
+            designation="Professor & HOD",
+            employee_id="EMP-CSE-001",
+            qualification="Ph.D. in Computer Science",
+            research_area="Machine Learning, Data Mining",
+            phone="+91-9988776655",
+            office_location="Main Block, Room 101",
+            office_hours="Mon/Wed 10:00 AM - 12:00 PM"
+        ),
+        models.Teacher(
+            id=2,
+            user_id=3,
+            department_id=2,
+            designation="Assistant Professor",
+            employee_id="EMP-AIML-002",
+            qualification="Ph.D. in AI",
+            research_area="Deep Learning, Computer Vision",
+            phone="+91-9988776656",
+            office_location="AIML Block, Room 204",
+            office_hours="Tue/Thu 2:00 PM - 4:00 PM"
+        ),
+        models.Teacher(
+            id=3,
+            user_id=4,
+            department_id=1,
+            designation="Associate Professor",
+            employee_id="EMP-CSE-003",
+            qualification="M.Tech, Ph.D.",
+            research_area="Software Engineering, DevOps",
+            phone="+91-9988776657",
+            office_location="Main Block, Room 105",
+            office_hours="Fri 1:00 PM - 3:00 PM"
+        )
     ]
     for t in teachers:
         db.add(t)
