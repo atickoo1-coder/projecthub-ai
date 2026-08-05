@@ -673,7 +673,6 @@ const TeacherDashboard = () => {
           { id: 'overview', label: 'Overview', icon: Users },
           { id: 'profile', label: 'Faculty Profile', icon: User },
           { id: 'mentees', label: 'Mentees Directory', icon: BookOpen },
-          { id: 'allocations', label: 'Project Allocation', icon: Settings },
           { id: 'evaluations', label: 'Evaluation Hub', icon: FileCheck },
           { id: 'rubrics', label: 'Marks Rubric', icon: BarChart },
           { id: 'discussion', label: 'Communication Forum', icon: MessageSquare },
@@ -1136,192 +1135,13 @@ const TeacherDashboard = () => {
                 </div>
 
                 <div className="pt-6 border-t mt-6 flex justify-end space-x-3">
-                  <button 
-                    onClick={() => {
-                      setAllocateForm({
-                        ...allocateForm,
-                        student_id: selectedStudent.id,
-                        title: selectedStudent.project_title !== 'Unallocated Project' ? selectedStudent.project_title : ''
-                      });
-                      setActiveTab('allocations');
-                      setSelectedStudent(null);
-                    }}
-                    className="py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold"
-                  >
-                    Modify Project Allocation
-                  </button>
                   <button onClick={() => setSelectedStudent(null)} className="py-2 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-350">
-                    Cancel
+                    Close Drawer
                   </button>
                 </div>
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* 4. PROJECT ALLOCATION */}
-      {activeTab === 'allocations' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-          <div className="lg:col-span-2 space-y-8">
-            <Card title="Allocate Project & Team Specifications" subtitle="Assign title, tech stack details, and difficulty levels.">
-              <form onSubmit={handleAllocateProject} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Student</label>
-                  <select
-                    required
-                    value={allocateForm.student_id}
-                    onChange={e => setAllocateForm({...allocateForm, student_id: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                  >
-                    <option value="">Select a student...</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>{s.user.name} ({s.roll_number})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Title</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="AI-Based Face Attendance System"
-                    value={allocateForm.title}
-                    onChange={e => setAllocateForm({...allocateForm, title: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Abstract Description</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Provide a brief summary synopsis..."
-                    value={allocateForm.abstract}
-                    onChange={e => setAllocateForm({...allocateForm, abstract: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Domain</label>
-                    <input
-                      type="text"
-                      placeholder="Computer Vision"
-                      value={allocateForm.domain}
-                      onChange={e => setAllocateForm({...allocateForm, domain: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Category</label>
-                    <input
-                      type="text"
-                      placeholder="Web Application"
-                      value={allocateForm.category}
-                      onChange={e => setAllocateForm({...allocateForm, category: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Technologies Used</label>
-                  <input
-                    type="text"
-                    placeholder="React, FastAPI, OpenCV"
-                    value={allocateForm.technologies}
-                    onChange={e => setAllocateForm({...allocateForm, technologies: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Difficulty Level</label>
-                  <select
-                    value={allocateForm.difficulty_level}
-                    onChange={e => setAllocateForm({...allocateForm, difficulty_level: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
-                </div>
-                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold">
-                  Submit Allocation
-                </button>
-              </form>
-            </Card>
-
-            {/* Merge/Split teams */}
-            <Card title="Advanced Allocation Actions" subtitle="Reassign student guides or manage academic teams.">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h5 className="font-bold text-xs text-slate-700 dark:text-slate-350 mb-3">Reassign Academic Guide</h5>
-                  <form onSubmit={handleReassignGuide} className="space-y-3">
-                    <select
-                      required
-                      value={reassignForm.student_id}
-                      onChange={e => setReassignForm({...reassignForm, student_id: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                    >
-                      <option value="">Select Student...</option>
-                      {students.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.roll_number})</option>
-                      ))}
-                    </select>
-                    <select
-                      required
-                      value={reassignForm.new_guide_id}
-                      onChange={e => setReassignForm({...reassignForm, new_guide_id: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                    >
-                      <option value="">Select New Guide...</option>
-                      <option value="1">Dr. Sarah Connor</option>
-                      <option value="2">Prof. Alan Turing</option>
-                      <option value="3">Dr. Grace Hopper</option>
-                    </select>
-                    <button type="submit" className="py-2 px-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-bold">
-                      Reassign Guide
-                    </button>
-                  </form>
-                </div>
-
-                <div>
-                  <h5 className="font-bold text-xs text-slate-700 dark:text-slate-350 mb-3">Team Restructure</h5>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-xl text-xs space-y-2">
-                    <p className="text-[11px] text-slate-550">Allows merging separate groups or splitting students into individual teams.</p>
-                    <div className="flex space-x-2 pt-2">
-                      <button onClick={() => showSuccess("Teams merged successfully!")} className="py-2 px-3 bg-slate-800 dark:bg-slate-100 dark:text-slate-900 rounded-xl text-[10px] font-bold">
-                        Merge Groups
-                      </button>
-                      <button onClick={() => showSuccess("Group split complete.")} className="py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold border">
-                        Split Group
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div>
-            <Card title="Allocation History Logs">
-              <div className="space-y-4 divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto pr-1">
-                {allocationHistory.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic py-4">No allocation audits recorded.</p>
-                ) : (
-                  allocationHistory.map(log => (
-                    <div key={log.id} className="pt-3 first:pt-0">
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-indigo-500 block">{log.action.replace('_', ' ')}</span>
-                      <p className="text-xs text-slate-655 dark:text-slate-355 mt-1 leading-normal">{log.details}</p>
-                      <span className="text-[9px] text-slate-400 mt-1 block">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
-          </div>
         </div>
       )}
 
