@@ -380,6 +380,14 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
     try {
       const response = await projectAPI.syncGithubStats(activeProject.id, githubForm);
       setGithubStats(response);
+      
+      // Update project model github_repo link to keep in sync
+      const updatedProj = await projectAPI.updateProject(activeProject.id, {
+        github_repo: githubForm.repo_name
+      });
+      setActiveProject(updatedProj);
+      setProjects(projects.map(p => p.id === updatedProj.id ? updatedProj : p));
+      
       setSuccess("GitHub integration settings saved!");
       setEditingGithub(false);
     } catch (err) {
