@@ -343,7 +343,7 @@ const AdminDashboard = () => {
         </button>
       </div>
 
-      {activeTab === 'overview' ? (
+      {activeTab === 'overview' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 animate-fade-in">
             <Card 
@@ -548,7 +548,9 @@ const AdminDashboard = () => {
             </div>
           </div>
         </>
-      ) : (
+      )}
+
+      {activeTab === 'students' && (
         /* Students Tab */
         <div className="space-y-6 animate-fade-in">
           <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
