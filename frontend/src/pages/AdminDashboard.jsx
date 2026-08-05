@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI, hodAPI } from '../services/api';
+import { adminAPI, hodAPI, teacherAPI } from '../services/api';
 import Card from '../components/Card';
 import { Link } from 'react-router-dom';
 import { 
@@ -27,6 +27,23 @@ const AdminDashboard = () => {
   
   // Custom Tabs state
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Allocation states
+  const [allocationHistory, setAllocationHistory] = useState([]);
+  const [allocateForm, setAllocateForm] = useState({
+    student_id: '',
+    title: '',
+    abstract: '',
+    description: '',
+    domain: '',
+    category: '',
+    technologies: '',
+    difficulty_level: 'intermediate'
+  });
+  const [reassignForm, setReassignForm] = useState({
+    student_id: '',
+    new_guide_id: ''
+  });
   
   // Student lookup state
   const [allStudents, setAllStudents] = useState([]);
@@ -104,6 +121,13 @@ const AdminDashboard = () => {
 
       const teachersList = await adminAPI.getTeachers();
       setTeachers(teachersList);
+
+      try {
+        const history = await teacherAPI.getAllocationHistory();
+        setAllocationHistory(history);
+      } catch (err) {
+        console.error("Failed to load allocation history:", err);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -236,6 +260,59 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleAllocateProject = async (e) => {
+    e.preventDefault();
+    if (!allocateForm.student_id) {
+      setError("Please select a student to allocate project.");
+      return;
+    }
+    setError(null);
+    setSuccess(false);
+    try {
+      await teacherAPI.allocateProject(allocateForm.student_id, {
+        title: allocateForm.title,
+        abstract: allocateForm.abstract,
+        description: allocateForm.description,
+        domain: allocateForm.domain,
+        category: allocateForm.category,
+        technologies: allocateForm.technologies,
+        difficulty_level: allocateForm.difficulty_level
+      });
+      setSuccess(true);
+      setAllocateForm({
+        student_id: '',
+        title: '',
+        abstract: '',
+        description: '',
+        domain: '',
+        category: '',
+        technologies: '',
+        difficulty_level: 'intermediate'
+      });
+      fetchData();
+    } catch (err) {
+      setError("Allocation request failed.");
+    }
+  };
+
+  const handleReassignFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!reassignForm.student_id || !reassignForm.new_guide_id) {
+      setError("Fill all guide reassignment details.");
+      return;
+    }
+    setError(null);
+    setSuccess(false);
+    try {
+      await teacherAPI.reassignGuide(reassignForm.student_id, parseInt(reassignForm.new_guide_id));
+      setSuccess(true);
+      setReassignForm({ student_id: '', new_guide_id: '' });
+      fetchData();
+    } catch (err) {
+      setError("Reassignment request failed.");
+    }
+  };
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header Banner */}
@@ -248,15 +325,21 @@ const AdminDashboard = () => {
       <div className="flex border-b border-slate-200 dark:border-slate-800 space-x-6 text-sm font-semibold">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`pb-3 transition-colors ${activeTab === 'overview' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-100'}`}
+          className={`pb-3 transition-colors ${activeTab === 'overview' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-105'}`}
         >
           System Overview
         </button>
         <button
           onClick={() => setActiveTab('students')}
-          className={`pb-3 transition-colors ${activeTab === 'students' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-100'}`}
+          className={`pb-3 transition-colors ${activeTab === 'students' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-105'}`}
         >
           Students Registry ({allStudents.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('allocation')}
+          className={`pb-3 transition-colors ${activeTab === 'allocation' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-105'}`}
+        >
+          Project Allocation
         </button>
       </div>
 
@@ -814,6 +897,169 @@ const AdminDashboard = () => {
                 </table>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'allocation' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in text-slate-800 dark:text-slate-100">
+          <div className="lg:col-span-2 space-y-8">
+            <Card title="Allocate Project & Team Specifications" subtitle="Assign title, tech stack details, and difficulty levels.">
+              <form onSubmit={handleAllocateProject} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Student</label>
+                  <select
+                    required
+                    value={allocateForm.student_id}
+                    onChange={e => setAllocateForm({...allocateForm, student_id: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="">Select a student...</option>
+                    {allStudents.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.roll_number})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Title</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="AI-Based Face Attendance System"
+                    value={allocateForm.title}
+                    onChange={e => setAllocateForm({...allocateForm, title: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Abstract Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Provide a brief summary synopsis..."
+                    value={allocateForm.abstract}
+                    onChange={e => setAllocateForm({...allocateForm, abstract: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Domain</label>
+                    <input
+                      type="text"
+                      placeholder="Computer Vision"
+                      value={allocateForm.domain}
+                      onChange={e => setAllocateForm({...allocateForm, domain: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Category</label>
+                    <input
+                      type="text"
+                      placeholder="Web Application"
+                      value={allocateForm.category}
+                      onChange={e => setAllocateForm({...allocateForm, category: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Technologies Used</label>
+                  <input
+                    type="text"
+                    placeholder="React, FastAPI, OpenCV"
+                    value={allocateForm.technologies}
+                    onChange={e => setAllocateForm({...allocateForm, technologies: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Difficulty Level</label>
+                  <select
+                    value={allocateForm.difficulty_level}
+                    onChange={e => setAllocateForm({...allocateForm, difficulty_level: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-md shadow-sky-500/10">
+                  Submit Allocation
+                </button>
+              </form>
+            </Card>
+
+            <Card title="Advanced Allocation Actions" subtitle="Reassign student guides or manage academic teams.">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                <div>
+                  <h5 className="font-bold text-xs text-slate-700 dark:text-slate-350 mb-3">Reassign Academic Guide</h5>
+                  <form onSubmit={handleReassignFormSubmit} className="space-y-3">
+                    <select
+                      required
+                      value={reassignForm.student_id}
+                      onChange={e => setReassignForm({...reassignForm, student_id: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">Select Student...</option>
+                      {allStudents.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.roll_number})</option>
+                      ))}
+                    </select>
+                    <select
+                      required
+                      value={reassignForm.new_guide_id}
+                      onChange={e => setReassignForm({...reassignForm, new_guide_id: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">Select New Guide...</option>
+                      {teachers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.department_name})</option>
+                      ))}
+                    </select>
+                    <button type="submit" className="py-2 px-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-bold">
+                      Reassign Guide
+                    </button>
+                  </form>
+                </div>
+
+                <div>
+                  <h5 className="font-bold text-xs text-slate-700 dark:text-slate-350 mb-3">Team Restructure</h5>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-xl text-xs space-y-2">
+                    <p className="text-[11px] text-slate-550">Allows merging separate groups or splitting students into individual teams.</p>
+                    <div className="flex space-x-2 pt-2">
+                      <button onClick={() => { setSuccess(true); setError(null); }} className="py-2 px-3 bg-slate-800 dark:bg-slate-100 dark:text-slate-900 rounded-xl text-[10px] font-bold">
+                        Merge Groups
+                      </button>
+                      <button onClick={() => { setSuccess(true); setError(null); }} className="py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold border">
+                        Split Group
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div>
+            <Card title="Allocation History Logs">
+              <div className="space-y-4 divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto pr-1 text-xs">
+                {allocationHistory.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-4">No allocation audits recorded.</p>
+                ) : (
+                  allocationHistory.map(log => (
+                    <div key={log.id} className="pt-3 first:pt-0">
+                      <span className="text-[9px] uppercase font-bold tracking-wider text-indigo-500 block">{log.action.replace('_', ' ')}</span>
+                      <p className="text-xs text-slate-655 dark:text-slate-355 mt-1 leading-normal">{log.details}</p>
+                      <span className="text-[9px] text-slate-400 mt-1 block">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
           </div>
         </div>
       )}
