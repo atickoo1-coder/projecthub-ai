@@ -295,6 +295,100 @@ export const adminAPI = {
   getProjects: async (status = '') => {
     const res = await api.get('/admin/projects', { params: { status } });
     return res.data;
+  },
+  getOpsStats: async () => {
+    const res = await api.get('/admin/ops/stats');
+    return res.data;
+  },
+  getCharts: async () => {
+    const res = await api.get('/admin/ops/charts');
+    return res.data;
+  },
+  getStudentsDir: async (params = {}) => {
+    const res = await api.get('/admin/ops/students', { params });
+    return res.data;
+  },
+  createStudentManual: async (data) => {
+    const res = await api.post('/admin/ops/students', data);
+    return res.data;
+  },
+  updateStudent: async (studentId, data) => {
+    const res = await api.put(`/admin/ops/students/${studentId}`, data);
+    return res.data;
+  },
+  deleteStudent: async (studentId, mode = 'soft') => {
+    const res = await api.delete(`/admin/ops/students/${studentId}`, { params: { mode } });
+    return res.data;
+  },
+  bulkUploadStudents: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/ops/students/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getStudentsHierarchy: async () => {
+    const res = await api.get('/admin/ops/students/hierarchy');
+    return res.data;
+  },
+  getTeachersDir: async (search = '') => {
+    const res = await api.get('/admin/ops/teachers', { params: { search } });
+    return res.data;
+  },
+  createTeacherManual: async (formData) => {
+    const res = await api.post('/admin/ops/teachers', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  updateTeacher: async (teacherId, formData) => {
+    const res = await api.put(`/admin/ops/teachers/${teacherId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getGuideWorkloads: async () => {
+    const res = await api.get('/admin/ops/allocations/workload');
+    return res.data;
+  },
+  manualAllocateGuide: async (studentId, teacherId) => {
+    const res = await api.post('/admin/ops/allocations/manual', null, {
+      params: { student_id: studentId, teacher_id: teacherId }
+    });
+    return res.data;
+  },
+  bulkAllocateGuides: async (data) => {
+    const res = await api.post('/admin/ops/allocations/bulk', null, { params: data });
+    return res.data;
+  },
+  getSmartGuideRecommendation: async (projectId) => {
+    const res = await api.get('/admin/ops/allocations/recommend', { params: { project_id: projectId } });
+    return res.data;
+  },
+  getOrgDetails: async () => {
+    const res = await api.get('/admin/ops/org/details');
+    return res.data;
+  },
+  addOrgDept: async (name, code) => {
+    const res = await api.post('/admin/ops/org/departments', null, { params: { name, code } });
+    return res.data;
+  },
+  addOrgClass: async (data) => {
+    const res = await api.post('/admin/ops/org/classes', null, { params: data });
+    return res.data;
+  },
+  addOrgSection: async (name) => {
+    const res = await api.post('/admin/ops/org/sections', null, { params: { name } });
+    return res.data;
+  },
+  addOrgBatch: async (name) => {
+    const res = await api.post('/admin/ops/org/batches', null, { params: { name } });
+    return res.data;
+  },
+  getReportsDownloadUrl: (reportType) => {
+    const token = localStorage.getItem('token');
+    return `${API_URL}/admin/ops/reports/download?report_type=${reportType}&token=${token}`;
   }
 };
 

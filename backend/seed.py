@@ -277,6 +277,72 @@ def seed_db():
     for pl in placements:
         db.add(pl)
         
+    # Seed academic organization structures
+    prog_btech = models.Program(id=1, name="B.Tech")
+    prog_mtech = models.Program(id=2, name="M.Tech")
+    db.add(prog_btech)
+    db.add(prog_mtech)
+    
+    years = [
+        models.AcademicYear(id=1, name="First Year"),
+        models.AcademicYear(id=2, name="Second Year"),
+        models.AcademicYear(id=3, name="Third Year"),
+        models.AcademicYear(id=4, name="Fourth Year")
+    ]
+    for y in years:
+        db.add(y)
+        
+    semesters = [models.Semester(id=i, number=i) for i in range(1, 9)]
+    for sem in semesters:
+        db.add(sem)
+        
+    sections = [
+        models.Section(id=1, name="Section A"),
+        models.Section(id=2, name="Section B")
+    ]
+    for sec in sections:
+        db.add(sec)
+        
+    batches = [
+        models.Batch(id=1, name="2023-2027"),
+        models.Batch(id=2, name="2024-2028")
+    ]
+    for b in batches:
+        db.add(b)
+        
+    db.flush()
+    
+    # Add Classes
+    classes = [
+        models.Class(id=1, name="Class A1", department_id=1, academic_year_id=4, section_id=1, class_teacher_id=3, capacity=60),
+        models.Class(id=2, name="Class B2", department_id=2, academic_year_id=3, section_id=2, class_teacher_id=2, capacity=60)
+    ]
+    for c in classes:
+        db.add(c)
+        
+    # Add Teacher Specializations
+    specs = [
+        models.TeacherSpecialization(teacher_id=1, specialization="Machine Learning"),
+        models.TeacherSpecialization(teacher_id=1, specialization="Data Mining"),
+        models.TeacherSpecialization(teacher_id=1, specialization="Healthcare AI"),
+        models.TeacherSpecialization(teacher_id=2, specialization="Deep Learning"),
+        models.TeacherSpecialization(teacher_id=2, specialization="Computer Vision"),
+        models.TeacherSpecialization(teacher_id=2, specialization="AI"),
+        models.TeacherSpecialization(teacher_id=3, specialization="Software Engineering"),
+        models.TeacherSpecialization(teacher_id=3, specialization="DevOps")
+    ]
+    for sp in specs:
+        db.add(sp)
+        
+    # Add Guide Workload limits
+    workloads = [
+        models.GuideWorkload(teacher_id=1, max_capacity=20),
+        models.GuideWorkload(teacher_id=2, max_capacity=20),
+        models.GuideWorkload(teacher_id=3, max_capacity=20)
+    ]
+    for w in workloads:
+        db.add(w)
+
     db.commit()
     db.close()
     print("Database seeded successfully!")

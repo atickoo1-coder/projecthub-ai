@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI, hodAPI, teacherAPI } from '../services/api';
 import Card from '../components/Card';
 import { Link } from 'react-router-dom';
+import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  ArcElement, 
+  Title as ChartTitle, 
+  Tooltip, 
+  Legend 
+} from 'chart.js';
 import { 
   Building2, 
   Megaphone, 
@@ -16,40 +27,67 @@ import {
   ChevronRight,
   Search,
   Sparkles,
-  Trash2
+  Trash2,
+  Users,
+  FolderOpen,
+  ArrowRight,
+  Edit2,
+  RefreshCw,
+  Upload,
+  Download,
+  Calendar,
+  Layers,
+  Award,
+  AlertTriangle,
+  Sliders,
+  Settings,
+  HelpCircle,
+  UserCheck
 } from 'lucide-react';
 
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, ChartTitle, Tooltip, Legend);
+
 const AdminDashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [depts, setDepts] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  
-  // Custom Tabs state
+  // Navigation
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Allocation states
-  const [allocationHistory, setAllocationHistory] = useState([]);
-  const [allocateForm, setAllocateForm] = useState({
-    student_id: '',
-    title: '',
-    abstract: '',
-    description: '',
-    domain: '',
-    category: '',
-    technologies: '',
-    difficulty_level: 'intermediate'
+  // Stats & Analytics Data
+  const [stats, setStats] = useState(null);
+  const [chartsData, setChartsData] = useState(null);
+
+  // Lists
+  const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [workloads, setWorkloads] = useState([]);
+  const [orgDetails, setOrgDetails] = useState({
+    departments: [],
+    years: [],
+    sections: [],
+    programs: [],
+    semesters: [],
+    batches: [],
+    classes: []
   });
-  const [reassignForm, setReassignForm] = useState({
-    student_id: '',
-    new_guide_id: ''
-  });
-  
-  // Student lookup state
-  const [allStudents, setAllStudents] = useState([]);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [hierarchy, setHierarchy] = useState({});
+
+  // Tree View Expand States (keyed by node string path)
+  const [expandedNodes, setExpandedNodes] = useState({});
+
+  // Search & Filters for Student Directory
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [filterSec, setFilterSec] = useState('');
+  const [filterClass, setFilterClass] = useState('');
+  const [filterGuide, setFilterGuide] = useState('');
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+
+  // Search & Filters for Teacher Directory
+  const [teacherSearch, setTeacherSearch] = useState('');
+
+  // Dialog / Form States
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [newStudent, setNewStudent] = useState({
+  const [newStudentForm, setNewStudentForm] = useState({
     name: '',
     email: '',
     password: 'password123',
@@ -58,611 +96,833 @@ const AdminDashboard = () => {
     univ_roll_number: '',
     mobile: '',
     department_id: '',
-    year: 1,
-    semester: 1,
+    year: 4,
+    semester: 7,
     section: 'A',
-    batch: ''
+    class_name: '',
+    batch: '2023-2027',
+    program: 'B.Tech',
+    admission_year: 2023,
+    cgpa: 8.0,
+    guide_id: ''
   });
-  
-  // Department Details state
-  const [selectedDept, setSelectedDept] = useState(null);
-  const [deptAnalytics, setDeptAnalytics] = useState(null);
-  const [deptStudents, setDeptStudents] = useState([]);
 
-  // Detail Modal states
-  const [activeDetailModal, setActiveDetailModal] = useState(null);
-  const [detailModalData, setDetailModalData] = useState([]);
-  const [modalLoading, setModalLoading] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null); // student object or null
+  const [showAddTeacher, setShowAddTeacher] = useState(false);
+  const [newTeacherForm, setNewTeacherForm] = useState({
+    name: '',
+    email: '',
+    password: 'password123',
+    employee_id: '',
+    department_id: '',
+    designation: 'Assistant Professor',
+    qualification: 'Ph.D.',
+    experience: 0,
+    phone: '',
+    office_location: '',
+    office_hours: 'Mon/Wed/Fri 10:00 AM - 12:00 PM',
+    specializations: ['Artificial Intelligence']
+  });
+
+  const [editingTeacher, setEditingTeacher] = useState(null); // teacher object or null
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadSummary, setUploadSummary] = useState(null);
+
+  // Allocation Forms
+  const [manualAllocForm, setManualAllocForm] = useState({ student_id: '', teacher_id: '' });
+  const [bulkAllocForm, setBulkAllocForm] = useState({ department_id: '', year: 4, section: 'A', teacher_id: '' });
+  const [recommendProjectId, setRecommendProjectId] = useState('');
+  const [recommendations, setRecommendations] = useState([]);
+
+  // Org Config forms
+  const [showAddDept, setShowAddDept] = useState(false);
+  const [deptForm, setDeptForm] = useState({ name: '', code: '' });
   
-  // Creation state
-  const [newDept, setNewDept] = useState({ name: '', code: '' });
+  const [showAddClass, setShowAddClass] = useState(false);
+  const [classForm, setClassForm] = useState({
+    name: '',
+    department_id: '',
+    academic_year_id: '',
+    section_id: '',
+    class_teacher_id: '',
+    capacity: 60
+  });
+
+  const [showAddSec, setShowAddSec] = useState(false);
+  const [secForm, setSecForm] = useState({ name: '' });
+
+  const [showAddBatch, setShowAddBatch] = useState(false);
+  const [batchForm, setBatchForm] = useState({ name: '' });
+
+  // Notifications or Feedbacks
+  const [announcements, setAnnouncements] = useState([]);
   const [newAnn, setNewAnn] = useState({ title: '', content: '', target_audience: 'all' });
+
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleOpenDetailModal = async (type) => {
-    setActiveDetailModal(type);
-    setModalLoading(true);
+  // Fetch initial configuration & core data
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      if (type === 'mentees') {
-        const data = await adminAPI.getStudents();
-        setDetailModalData(data);
-      } else if (type === 'guides') {
-        const data = await adminAPI.getTeachers();
-        setDetailModalData(data);
-      } else if (type === 'submitted_projects') {
-        const data = await adminAPI.getProjects();
-        setDetailModalData(data);
-      } else if (type === 'pending_reviews') {
-        const data = await adminAPI.getProjects('pending_review');
-        setDetailModalData(data);
-      } else if (type === 'approved_projects') {
-        const data = await adminAPI.getProjects('approved');
-        setDetailModalData(data);
-      }
+      const statsRes = await adminAPI.getOpsStats();
+      setStats(statsRes);
+      
+      const chartsRes = await adminAPI.getCharts();
+      setChartsData(chartsRes);
+
+      const studentsRes = await adminAPI.getStudentsDir({
+        search: searchQuery,
+        year: filterYear,
+        department_id: filterDept,
+        section: filterSec,
+        class_name: filterClass,
+        guide_id: filterGuide,
+        include_deleted: includeDeleted
+      });
+      setStudents(studentsRes);
+
+      const teachersRes = await adminAPI.getTeachersDir(teacherSearch);
+      setTeachers(teachersRes);
+
+      const workloadRes = await adminAPI.getGuideWorkloads();
+      setWorkloads(workloadRes);
+
+      const orgRes = await adminAPI.getOrgDetails();
+      setOrgDetails(orgRes);
+
+      const hierarchyRes = await adminAPI.getStudentsHierarchy();
+      setHierarchy(hierarchyRes);
+
+      const annRes = await adminAPI.getAnnouncements();
+      setAnnouncements(annRes);
     } catch (err) {
       console.error(err);
+      setError("Failed to fetch dashboard metrics.");
     } finally {
-      setModalLoading(false);
-    }
-  };
-
-  const fetchData = async () => {
-    try {
-      const systemStats = await adminAPI.getStats();
-      setStats(systemStats);
-      const departmentsList = await adminAPI.getDepts();
-      setDepts(departmentsList);
-      const anns = await adminAPI.getAnnouncements();
-      setAnnouncements(anns);
-      
-      const studentsList = await adminAPI.getStudents(studentSearch);
-      setAllStudents(studentsList);
-
-      const teachersList = await adminAPI.getTeachers();
-      setTeachers(teachersList);
-
-      try {
-        const history = await teacherAPI.getAllocationHistory();
-        setAllocationHistory(history);
-      } catch (err) {
-        console.error("Failed to load allocation history:", err);
-      }
-    } catch (e) {
-      console.error(e);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-  }, [studentSearch]);
+  }, [searchQuery, filterYear, filterDept, filterSec, filterClass, filterGuide, includeDeleted, teacherSearch]);
 
-  const handleSelectDept = async (dept) => {
-    try {
-      const analyticsRes = await hodAPI.getAnalytics({ dept_id: dept.id });
-      setDeptAnalytics(analyticsRes);
-      const studentsRes = await hodAPI.getStudents({ dept_id: dept.id });
-      setDeptStudents(studentsRes);
-      setSelectedDept(dept);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleDeleteDept = async (deptId) => {
-    if (!window.confirm("Are you sure you want to delete this department?")) return;
+  const triggerReset = () => {
     setError(null);
     setSuccess(false);
-    try {
-      await adminAPI.deleteDept(deptId);
-      setSuccess(true);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete department.');
-    }
+    fetchData();
   };
 
-  const handleCreateDept = async (e) => {
+  // Student Actions
+  const handleCreateStudent = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
     try {
-      await adminAPI.createDept(newDept);
+      await adminAPI.createStudentManual({
+        ...newStudentForm,
+        department_id: parseInt(newStudentForm.department_id),
+        year: parseInt(newStudentForm.year),
+        semester: parseInt(newStudentForm.semester),
+        admission_year: parseInt(newStudentForm.admission_year),
+        cgpa: parseFloat(newStudentForm.cgpa) || 8.0,
+        guide_id: newStudentForm.guide_id ? parseInt(newStudentForm.guide_id) : null
+      });
       setSuccess(true);
-      setNewDept({ name: '', code: '' });
+      setShowAddStudent(false);
+      setNewStudentForm({
+        name: '', email: '', password: 'password123', roll_number: '', reg_number: '', univ_roll_number: '',
+        mobile: '', department_id: '', year: 4, semester: 7, section: 'A', class_name: '',
+        batch: '2023-2027', program: 'B.Tech', admission_year: 2023, cgpa: 8.0, guide_id: ''
+      });
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create department.');
+      setError(err.response?.data?.detail || "Failed to create student profile.");
+    }
+  };
+
+  const handleUpdateStudent = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    try {
+      await adminAPI.updateStudent(editingStudent.id, {
+        name: editingStudent.name,
+        roll_number: editingStudent.roll_number,
+        reg_number: editingStudent.reg_number,
+        univ_roll_number: editingStudent.univ_roll_number,
+        email: editingStudent.email,
+        mobile: editingStudent.mobile,
+        department_id: parseInt(editingStudent.department_id),
+        year: parseInt(editingStudent.year),
+        semester: parseInt(editingStudent.semester),
+        section: editingStudent.section,
+        class_name: editingStudent.class_name,
+        batch: editingStudent.batch,
+        program: editingStudent.program,
+        admission_year: parseInt(editingStudent.admission_year) || 2023,
+        cgpa: parseFloat(editingStudent.cgpa) || 8.0,
+        guide_id: editingStudent.guide_id ? parseInt(editingStudent.guide_id) : null
+      });
+      setSuccess(true);
+      setEditingStudent(null);
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to update student profile.");
+    }
+  };
+
+  const handleDeleteStudent = async (studentId, mode) => {
+    if (mode === 'permanent' && !window.confirm("Are you sure you want to permanently delete this student profile? This action is irreversible.")) {
+      return;
+    }
+    setError(null);
+    setSuccess(false);
+    try {
+      await adminAPI.deleteStudent(studentId, mode);
+      setSuccess(true);
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Delete operation failed.");
+    }
+  };
+
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) {
+      setError("Please select a file to upload.");
+      return;
+    }
+    setError(null);
+    setSuccess(false);
+    try {
+      const summary = await adminAPI.bulkUploadStudents(uploadFile);
+      setUploadSummary(summary);
+      setSuccess(true);
+      setUploadFile(null);
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Import bulk upload file failed.");
+    }
+  };
+
+  // Teacher Actions
+  const handleCreateTeacher = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    try {
+      const form = new FormData();
+      Object.keys(newTeacherForm).forEach(k => {
+        if (k === 'specializations') {
+          form.append('specializations_json', JSON.stringify(newTeacherForm.specializations));
+        } else {
+          form.append(k, newTeacherForm[k]);
+        }
+      });
+      await adminAPI.createTeacherManual(form);
+      setSuccess(true);
+      setShowAddTeacher(false);
+      setNewTeacherForm({
+        name: '', email: '', password: 'password123', employee_id: '', department_id: '',
+        designation: 'Assistant Professor', qualification: 'Ph.D.', experience: 0, phone: '',
+        office_location: '', office_hours: 'Mon/Wed/Fri 10:00 AM - 12:00 PM', specializations: ['Artificial Intelligence']
+      });
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to create teacher profile.");
+    }
+  };
+
+  const handleUpdateTeacher = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    try {
+      const form = new FormData();
+      form.append('name', editingTeacher.name);
+      form.append('email', editingTeacher.email);
+      form.append('designation', editingTeacher.designation);
+      form.append('qualification', editingTeacher.qualification);
+      form.append('experience', parseInt(editingTeacher.experience) || 0);
+      form.append('phone', editingTeacher.phone);
+      form.append('office_location', editingTeacher.office_location);
+      form.append('office_hours', editingTeacher.office_hours);
+      form.append('max_capacity', parseInt(editingTeacher.max_capacity) || 20);
+      form.append('specializations_json', JSON.stringify(editingTeacher.specializations));
+
+      await adminAPI.updateTeacher(editingTeacher.id, form);
+      setSuccess(true);
+      setEditingTeacher(null);
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to update teacher profile.");
+    }
+  };
+
+  // Guide Allocations
+  const handleManualAllocate = async (e) => {
+    e.preventDefault();
+    if (!manualAllocForm.student_id || !manualAllocForm.teacher_id) {
+      setError("Please select both student and guide.");
+      return;
+    }
+    setError(null);
+    setSuccess(false);
+    try {
+      const res = await adminAPI.manualAllocateGuide(
+        parseInt(manualAllocForm.student_id),
+        parseInt(manualAllocForm.teacher_id)
+      );
+      setSuccess(true);
+      if (res.capacity_exceeded_warning) {
+        setError("Guide assigned successfully, but maximum supervisor limit was exceeded!");
+      }
+      setManualAllocForm({ student_id: '', teacher_id: '' });
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Guide allocation failed.");
+    }
+  };
+
+  const handleBulkAllocate = async (e) => {
+    e.preventDefault();
+    if (!bulkAllocForm.department_id || !bulkAllocForm.teacher_id) {
+      setError("Please fill in department and target guide.");
+      return;
+    }
+    setError(null);
+    setSuccess(false);
+    try {
+      await adminAPI.bulkAllocateGuides({
+        department_id: parseInt(bulkAllocForm.department_id),
+        year: parseInt(bulkAllocForm.year),
+        section: bulkAllocForm.section,
+        teacher_id: parseInt(bulkAllocForm.teacher_id)
+      });
+      setSuccess(true);
+      setBulkAllocForm({ department_id: '', year: 4, section: 'A', teacher_id: '' });
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Bulk guide allocation failed.");
+    }
+  };
+
+  const handleGetRecommendation = async (e) => {
+    e.preventDefault();
+    if (!recommendProjectId) return;
+    setError(null);
+    try {
+      const res = await adminAPI.getSmartGuideRecommendation(parseInt(recommendProjectId));
+      setRecommendations(res);
+    } catch (err) {
+      setError("Project recommendation query failed.");
+    }
+  };
+
+  // Org Config Creators
+  const handleCreateDept = async (e) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await adminAPI.addOrgDept(deptForm.name, deptForm.code);
+      setSuccess(true);
+      setShowAddDept(false);
+      setDeptForm({ name: '', code: '' });
+      fetchData();
+    } catch (err) {
+      setError("Department creation failed.");
+    }
+  };
+
+  const handleCreateClass = async (e) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await adminAPI.addOrgClass({
+        name: classForm.name,
+        department_id: parseInt(classForm.department_id),
+        academic_year_id: parseInt(classForm.academic_year_id),
+        section_id: parseInt(classForm.section_id),
+        class_teacher_id: classForm.class_teacher_id ? parseInt(classForm.class_teacher_id) : null,
+        capacity: parseInt(classForm.capacity) || 60
+      });
+      setSuccess(true);
+      setShowAddClass(false);
+      setClassForm({ name: '', department_id: '', academic_year_id: '', section_id: '', class_teacher_id: '', capacity: 60 });
+      fetchData();
+    } catch (err) {
+      setError("Class creation failed.");
+    }
+  };
+
+  const handleCreateSection = async (e) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await adminAPI.addOrgSection(secForm.name);
+      setSuccess(true);
+      setShowAddSec(false);
+      setSecForm({ name: '' });
+      fetchData();
+    } catch (err) {
+      setError("Section creation failed.");
+    }
+  };
+
+  const handleCreateBatch = async (e) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await adminAPI.addOrgBatch(batchForm.name);
+      setSuccess(true);
+      setShowAddBatch(false);
+      setBatchForm({ name: '' });
+      fetchData();
+    } catch (err) {
+      setError("Batch creation failed.");
     }
   };
 
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
     try {
       await adminAPI.createAnnouncement(newAnn);
       setSuccess(true);
       setNewAnn({ title: '', content: '', target_audience: 'all' });
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to post announcement.');
+      setError("Announcement publication failed.");
     }
   };
 
-  const handleCreateStudent = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(false);
-    try {
-      if (!newStudent.department_id) {
-        setError('Please select a department.');
-        return;
-      }
-      const payload = {
-        ...newStudent,
-        department_id: parseInt(newStudent.department_id),
-        year: parseInt(newStudent.year),
-        semester: parseInt(newStudent.semester)
-      };
-      await adminAPI.createStudent(payload);
-      setSuccess(true);
-      setShowAddStudent(false);
-      setNewStudent({
-        name: '',
-        email: '',
-        password: 'password123',
-        roll_number: '',
-        reg_number: '',
-        univ_roll_number: '',
-        mobile: '',
-        department_id: '',
-        year: 1,
-        semester: 1,
-        section: 'A',
-        batch: ''
-      });
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create student.');
-    }
+  // Toggle Nodes for tree hierarchy
+  const toggleNode = (nodePath) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodePath]: !prev[nodePath]
+    }));
   };
 
-  const handleDeleteStudent = async (studentId) => {
-    if (!window.confirm("Are you sure you want to delete this student profile? This will also remove all their projects and reports.")) return;
-    setError(null);
-    setSuccess(false);
-    try {
-      await adminAPI.deleteStudent(studentId);
-      setSuccess(true);
-      fetchData();
-      if (selectedDept) {
-        handleSelectDept(selectedDept);
-      }
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete student.');
-    }
+  // Chart datasets definitions
+  const getDeptChartData = () => {
+    if (!chartsData?.students_department) return { labels: [], datasets: [] };
+    return {
+      labels: chartsData.students_department.map(d => d.label),
+      datasets: [{
+        label: 'Students Count',
+        data: chartsData.students_department.map(d => d.value),
+        backgroundColor: '#0ea5e9'
+      }]
+    };
   };
 
-  const handleAllocateGuide = async (studentId, guideIdVal) => {
-    setError(null);
-    setSuccess(false);
-    try {
-      const parsedId = guideIdVal ? parseInt(guideIdVal) : null;
-      await adminAPI.allocateGuide(studentId, parsedId);
-      setSuccess(true);
-      fetchData();
-      if (selectedDept) {
-        handleSelectDept(selectedDept);
-      }
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to allocate guide.');
-    }
+  const getYearChartData = () => {
+    if (!chartsData?.students_year) return { labels: [], datasets: [] };
+    return {
+      labels: chartsData.students_year.map(y => y.label),
+      datasets: [{
+        label: 'Enrolled Students',
+        data: chartsData.students_year.map(y => y.value),
+        backgroundColor: '#6366f1'
+      }]
+    };
   };
 
-  const handleAllocateProject = async (e) => {
-    e.preventDefault();
-    if (!allocateForm.student_id) {
-      setError("Please select a student to allocate project.");
-      return;
-    }
-    setError(null);
-    setSuccess(false);
-    try {
-      await teacherAPI.allocateProject(allocateForm.student_id, {
-        title: allocateForm.title,
-        abstract: allocateForm.abstract,
-        description: allocateForm.description,
-        domain: allocateForm.domain,
-        category: allocateForm.category,
-        technologies: allocateForm.technologies,
-        difficulty_level: allocateForm.difficulty_level
-      });
-      setSuccess(true);
-      setAllocateForm({
-        student_id: '',
-        title: '',
-        abstract: '',
-        description: '',
-        domain: '',
-        category: '',
-        technologies: '',
-        difficulty_level: 'intermediate'
-      });
-      fetchData();
-    } catch (err) {
-      setError("Allocation request failed.");
-    }
+  const getWorkloadChartData = () => {
+    if (!chartsData?.guide_workload) return { labels: [], datasets: [] };
+    return {
+      labels: chartsData.guide_workload.map(w => w.guide),
+      datasets: [
+        {
+          label: 'Allocated Students',
+          data: chartsData.guide_workload.map(w => w.assigned),
+          backgroundColor: '#3b82f6'
+        },
+        {
+          label: 'Max Limit Capacity',
+          data: chartsData.guide_workload.map(w => w.capacity),
+          backgroundColor: '#ef4444'
+        }
+      ]
+    };
   };
 
-  const handleReassignFormSubmit = async (e) => {
-    e.preventDefault();
-    if (!reassignForm.student_id || !reassignForm.new_guide_id) {
-      setError("Fill all guide reassignment details.");
-      return;
-    }
-    setError(null);
-    setSuccess(false);
-    try {
-      await teacherAPI.reassignGuide(reassignForm.student_id, parseInt(reassignForm.new_guide_id));
-      setSuccess(true);
-      setReassignForm({ student_id: '', new_guide_id: '' });
-      fetchData();
-    } catch (err) {
-      setError("Reassignment request failed.");
-    }
+  const getStatusChartData = () => {
+    if (!chartsData?.project_status) return { labels: [], datasets: [] };
+    return {
+      labels: chartsData.project_status.map(s => s.label),
+      datasets: [{
+        data: chartsData.project_status.map(s => s.value),
+        backgroundColor: ['#f59e0b', '#10b981', '#14b8a6', '#f43f5e']
+      }]
+    };
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-8 space-y-8 max-w-7xl mx-auto text-slate-800 dark:text-slate-100">
       {/* Header Banner */}
-      <div>
-        <h2 className="text-3xl font-extrabold tracking-tight">University Control Center</h2>
-        <p className="text-sm text-slate-500 mt-1">Manage global system parameters, announcements, and departments.</p>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 space-x-6 text-sm font-semibold">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`pb-3 transition-colors ${activeTab === 'overview' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-105'}`}
-        >
-          System Overview
-        </button>
-        <button
-          onClick={() => setActiveTab('students')}
-          className={`pb-3 transition-colors ${activeTab === 'students' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-105'}`}
-        >
-          Students Registry ({allStudents.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('allocation')}
-          className={`pb-3 transition-colors ${activeTab === 'allocation' ? 'border-b-2 border-sky-500 text-sky-500' : 'text-slate-400 hover:text-slate-105'}`}
-        >
-          Project Allocation
+      <div className="flex justify-between items-center bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight">University Control Center</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage global system parameters, departments, student registers, and academic guides.</p>
+        </div>
+        <button onClick={triggerReset} className="p-3 bg-white dark:bg-slate-900 border hover:bg-slate-50 dark:hover:bg-slate-850 rounded-2xl shadow-sm text-sky-500 transition-all">
+          <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
         </button>
       </div>
 
-      {activeTab === 'overview' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 animate-fade-in">
-            <Card 
-              onClick={() => handleOpenDetailModal('mentees')}
-              className="border-l-4 border-indigo-500 p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
-            >
-              <p className="text-[10px] text-slate-555 font-semibold uppercase tracking-wider">Total Mentees</p>
-              <span className="text-2xl font-extrabold text-slate-850 dark:text-slate-100 block mt-2">
-                {stats?.total_students || 0}
-              </span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Active enrollments</span>
-            </Card>
-
-            <Card 
-              onClick={() => handleOpenDetailModal('guides')}
-              className="border-l-4 border-sky-500 p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
-            >
-              <p className="text-[10px] text-slate-555 font-semibold uppercase tracking-wider">Faculty Guides</p>
-              <span className="text-2xl font-extrabold text-slate-850 dark:text-slate-100 block mt-2">
-                {stats?.total_teachers || 0}
-              </span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Registered guides</span>
-            </Card>
-
-            <Card 
-              onClick={() => handleOpenDetailModal('submitted_projects')}
-              className="border-l-4 border-emerald-500 p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
-            >
-              <p className="text-[10px] text-slate-555 font-semibold uppercase tracking-wider">Submitted Proj</p>
-              <span className="text-2xl font-extrabold text-slate-850 dark:text-slate-100 block mt-2">
-                {stats?.total_projects || 0}
-              </span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Submitted proposals</span>
-            </Card>
-
-            <Card 
-              onClick={() => handleOpenDetailModal('pending_reviews')}
-              className="border-l-4 border-amber-500 p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
-            >
-              <p className="text-[10px] text-slate-555 font-semibold uppercase tracking-wider">Pending Reviews</p>
-              <span className="text-2xl font-extrabold text-amber-500 block mt-2">
-                {stats?.status_distribution?.pending_review || 0}
-              </span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Awaiting guide check</span>
-            </Card>
-
-            <Card 
-              onClick={() => handleOpenDetailModal('approved_projects')}
-              className="border-l-4 border-teal-500 p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
-            >
-              <p className="text-[10px] text-slate-555 font-semibold uppercase tracking-wider">Approved Proj</p>
-              <span className="text-2xl font-extrabold text-teal-500 block mt-2">
-                {stats?.status_distribution?.approved || 0}
-              </span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Approved count</span>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Section: Departments and Announcements */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Departments Listing */}
-              <Card title="Departments Registry" subtitle="Create or click on divisions to view details.">
-                <form onSubmit={handleCreateDept} className="mb-6 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-wrap gap-4 items-end">
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Division Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={newDept.name}
-                      onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
-                      placeholder="Data Science"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                    />
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Code</label>
-                    <input
-                      type="text"
-                      required
-                      value={newDept.code}
-                      onChange={(e) => setNewDept({ ...newDept, code: e.target.value })}
-                      placeholder="DS"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1"
-                  >
-                    <Plus size={14} />
-                    <span>Add</span>
-                  </button>
-                </form>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {depts.map(d => (
-                    <div 
-                      key={d.id} 
-                      onClick={() => handleSelectDept(d)}
-                      className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/20 dark:bg-slate-900/10 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors group"
-                    >
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div className="bg-sky-500/10 text-sky-500 p-2.5 rounded-lg shrink-0">
-                          <Building2 size={18} />
-                        </div>
-                        <div className="min-w-0">
-                          <h5 className="font-bold text-xs text-slate-850 dark:text-slate-100 truncate">{d.name}</h5>
-                          <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">{d.code}</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteDept(d.id);
-                        }}
-                        className="p-1.5 text-slate-450 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg shrink-0 opacity-0 group-hover:opacity-100 transition-all"
-                        title="Delete Department"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Announcements Control */}
-              <Card title="ERP Global Announcements" subtitle="Post notices for students or teachers.">
-                <form onSubmit={handleCreateAnnouncement} className="space-y-4 mb-6 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Notice Title</label>
-                      <input
-                        type="text"
-                        required
-                        value={newAnn.title}
-                        onChange={(e) => setNewAnn({ ...newAnn, title: e.target.value })}
-                        placeholder="Final Submission Deadline Extended"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Target Audience</label>
-                      <select
-                        value={newAnn.target_audience}
-                        onChange={(e) => setNewAnn({ ...newAnn, target_audience: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                      >
-                        <option value="all">Everyone</option>
-                        <option value="students">Students Only</option>
-                        <option value="teachers">Teachers Only</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Notice Content</label>
-                    <textarea
-                      required
-                      value={newAnn.content}
-                      onChange={(e) => setNewAnn({ ...newAnn, content: e.target.value })}
-                      placeholder="Enter bulletin text..."
-                      rows={2}
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="py-2 px-4 bg-slate-800 hover:bg-slate-750 dark:bg-slate-100 dark:hover:bg-slate-250 dark:text-slate-900 text-white rounded-lg text-xs font-bold transition-all"
-                  >
-                    Publish Bulletin
-                  </button>
-                </form>
-              </Card>
-            </div>
-
-            {/* Right Section: System Bulletins */}
-            <div>
-              <Card title="Active Bulletins">
-                <div className="space-y-4">
-                  {announcements.length === 0 ? (
-                    <p className="text-xs text-slate-500 text-center py-6">No announcements published.</p>
-                  ) : (
-                    announcements.map(ann => (
-                      <div key={ann.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/10">
-                        <div className="flex justify-between items-start mb-2">
-                          <h6 className="font-bold text-xs text-slate-800 dark:text-slate-100">{ann.title}</h6>
-                          <span className="bg-sky-500/10 text-sky-500 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
-                            {ann.target_audience}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 leading-normal">{ann.content}</p>
-                        <span className="text-[9px] text-slate-400 block mt-2">
-                          {new Date(ann.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            </div>
-          </div>
-        </>
+      {/* Message alerts */}
+      {error && (
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-bold flex items-center space-x-2 animate-pulse">
+          <AlertCircle size={16} />
+          <span>{error}</span>
+        </div>
+      )}
+      {success && (
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl text-xs font-bold flex items-center space-x-2 animate-fade-in">
+          <CheckCircle size={16} />
+          <span>Action completed successfully!</span>
+        </div>
       )}
 
-      {activeTab === 'students' && (
-        /* Students Tab */
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-            <div>
-              <h3 className="font-extrabold text-lg text-slate-850 dark:text-slate-100">Students Registry</h3>
-              <p className="text-xs text-slate-500 mt-1">Add, delete, or manage registered students across departments.</p>
-            </div>
+      {/* Tabs navigation row */}
+      <div className="border-b border-slate-200 dark:border-slate-800 overflow-x-auto flex space-x-2 pb-0.5 scrollbar-thin">
+        {[
+          { id: 'overview', label: 'Overview Metrics', icon: Layers },
+          { id: 'hierarchy', label: 'Student Organization Tree', icon: Sliders },
+          { id: 'students', label: 'Student Directory', icon: GraduationCap },
+          { id: 'teachers', label: 'Teacher Directory', icon: Users },
+          { id: 'allocations', label: 'Guide Allocations', icon: UserCheck },
+          { id: 'org', label: 'Academic Setup', icon: Settings },
+          { id: 'reports', label: 'Reports Export', icon: Download }
+        ].map(t => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.id;
+          return (
             <button
-              onClick={() => setShowAddStudent(!showAddStudent)}
-              className="flex items-center space-x-1.5 py-2.5 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sky-500/10"
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center space-x-2 pb-3 px-4 text-xs font-bold transition-all border-b-2 shrink-0 ${
+                isActive 
+                  ? 'border-sky-500 text-sky-500 font-extrabold' 
+                  : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
             >
-              <Plus size={16} />
-              <span>Register New Student</span>
+              <Icon size={14} />
+              <span>{t.label}</span>
             </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Panels */}
+
+      {/* 1. OVERVIEW METRICS */}
+      {activeTab === 'overview' && (
+        <div className="space-y-8 animate-fade-in">
+          {/* Stats grid */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { label: 'Total Students', val: stats?.total_students, color: 'text-indigo-500' },
+              { label: 'Total Teachers', val: stats?.total_teachers, color: 'text-sky-500' },
+              { label: 'Total Guides', val: stats?.total_guides, color: 'text-emerald-500' },
+              { label: 'Total Departments', val: stats?.total_departments, color: 'text-amber-500' },
+              { label: 'Total Classes', val: stats?.total_classes, color: 'text-pink-500' },
+              { label: 'Total Sections', val: stats?.total_sections, color: 'text-purple-500' },
+              { label: 'Total Projects', val: stats?.total_projects, color: 'text-rose-500' },
+              { label: 'Guide Pending', val: stats?.guide_allocations_pending, color: 'text-red-500' },
+              { label: 'Active Projects', val: stats?.active_projects, color: 'text-cyan-500' },
+              { label: 'Completed Projects', val: stats?.completed_projects, color: 'text-teal-500' }
+            ].map((stat, idx) => (
+              <Card key={idx} className="p-4 border-l-4 border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{stat.label}</span>
+                <span className={`text-2xl font-extrabold block mt-2 ${stat.color}`}>{stat.val ?? 0}</span>
+              </Card>
+            ))}
           </div>
 
-          {showAddStudent && (
-            <form onSubmit={handleCreateStudent} className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4">
-              <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">Student Account Registration</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudent.name}
-                    onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                    placeholder="Jane Doe"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={newStudent.email}
-                    onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                    placeholder="jane.doe@college.edu"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={newStudent.password}
-                    onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Card title="Students Department-wise" subtitle="Breakdown of student registrations by branch.">
+              <div className="h-[220px] flex items-center justify-center">
+                {chartsData && <Bar data={getDeptChartData()} options={{ responsive: true, maintainAspectRatio: false }} />}
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Roll Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudent.roll_number}
-                    onChange={(e) => setNewStudent({ ...newStudent, roll_number: e.target.value })}
-                    placeholder="CSE-2023-046"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Registration Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudent.reg_number}
-                    onChange={(e) => setNewStudent({ ...newStudent, reg_number: e.target.value })}
-                    placeholder="REG987654323"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Univ Roll Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudent.univ_roll_number}
-                    onChange={(e) => setNewStudent({ ...newStudent, univ_roll_number: e.target.value })}
-                    placeholder="UNIV-CSE-002"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
+            </Card>
+            <Card title="Students Year-wise" subtitle="Academic batch distribution.">
+              <div className="h-[220px] flex items-center justify-center">
+                {chartsData && <Bar data={getYearChartData()} options={{ responsive: true, maintainAspectRatio: false }} />}
               </div>
+            </Card>
+            <Card title="Project Distribution Status" subtitle="Overview of project lifecycle stages.">
+              <div className="h-[220px] flex items-center justify-center">
+                {chartsData && <Pie data={getStatusChartData()} options={{ responsive: true, maintainAspectRatio: false }} />}
+              </div>
+            </Card>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card title="Guide Workload Capacity Status" subtitle="Allocations vs limit capacity parameters per teacher.">
+              <div className="h-[280px]">
+                {chartsData && <Bar data={getWorkloadChartData()} options={{ responsive: true, maintainAspectRatio: false }} />}
+              </div>
+            </Card>
+            
+            {/* Announcements Panel */}
+            <Card title="College Announcements Board" subtitle="Broadcast system alerts to faculty and students.">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="md:col-span-2 space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Announcement Title"
+                    value={newAnn.title}
+                    onChange={e => setNewAnn({...newAnn, title: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
+                  />
+                  <textarea
+                    rows={2}
+                    placeholder="Message Content..."
+                    value={newAnn.content}
+                    onChange={e => setNewAnn({...newAnn, content: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
+                  />
+                </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Department</label>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Audience</label>
                   <select
-                    required
-                    value={newStudent.department_id}
-                    onChange={(e) => setNewStudent({ ...newStudent, department_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
+                    value={newAnn.target_audience}
+                    onChange={e => setNewAnn({...newAnn, target_audience: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs mb-3"
                   >
+                    <option value="all">All Profiles</option>
+                    <option value="student">Students Only</option>
+                    <option value="teacher">Teachers Only</option>
+                  </select>
+                  <button onClick={handleCreateAnnouncement} className="w-full py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold">
+                    Publish Alert
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-[160px] overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
+                {announcements.map(ann => (
+                  <div key={ann.id} className="pt-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold">{ann.title}</span>
+                      <span className="text-[8px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 uppercase font-bold">{ann.target_audience}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{ann.content}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* 2. STUDENT ORGANIZATION TREE VIEW */}
+      {activeTab === 'hierarchy' && (
+        <Card title="Student Organization Roster Hierarchy" subtitle="Expand or collapse nested class groups (Program → Year → Dept → Section → Class → Students).">
+          <div className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-3xl max-h-[700px] overflow-y-auto font-mono text-xs space-y-2">
+            {Object.keys(hierarchy).length === 0 ? (
+              <p className="text-slate-400 italic text-center py-8">No structured student records available.</p>
+            ) : (
+              Object.keys(hierarchy).map(prog => (
+                <div key={prog} className="border-l-2 border-slate-200 dark:border-slate-800 pl-4">
+                  <button onClick={() => toggleNode(prog)} className="flex items-center space-x-1.5 font-extrabold text-sky-500 py-1">
+                    <span>{expandedNodes[prog] ? '▼' : '►'}</span>
+                    <span>{prog} Program Group</span>
+                  </button>
+                  
+                  {expandedNodes[prog] && Object.keys(hierarchy[prog]).map(year => {
+                    const yearPath = `${prog}/${year}`;
+                    return (
+                      <div key={year} className="border-l-2 border-slate-200 dark:border-slate-800 pl-4 ml-2">
+                        <button onClick={() => toggleNode(yearPath)} className="flex items-center space-x-1.5 font-bold text-indigo-500 py-1">
+                          <span>{expandedNodes[yearPath] ? '▼' : '►'}</span>
+                          <span>{year} Students</span>
+                        </button>
+                        
+                        {expandedNodes[yearPath] && Object.keys(hierarchy[prog][year]).map(dept => {
+                          const deptPath = `${yearPath}/${dept}`;
+                          return (
+                            <div key={dept} className="border-l-2 border-slate-200 dark:border-slate-800 pl-4 ml-2">
+                              <button onClick={() => toggleNode(deptPath)} className="flex items-center space-x-1.5 font-semibold text-emerald-500 py-1">
+                                <span>{expandedNodes[deptPath] ? '▼' : '►'}</span>
+                                <span>Dept {dept}</span>
+                              </button>
+                              
+                              {expandedNodes[deptPath] && Object.keys(hierarchy[prog][year][dept]).map(sec => {
+                                const secPath = `${deptPath}/${sec}`;
+                                return (
+                                  <div key={sec} className="border-l-2 border-slate-200 dark:border-slate-800 pl-4 ml-2">
+                                    <button onClick={() => toggleNode(secPath)} className="flex items-center space-x-1.5 text-amber-500 py-1">
+                                      <span>{expandedNodes[secPath] ? '▼' : '►'}</span>
+                                      <span>{sec}</span>
+                                    </button>
+                                    
+                                    {expandedNodes[secPath] && Object.keys(hierarchy[prog][year][dept][sec]).map(cls => {
+                                      const clsPath = `${secPath}/${cls}`;
+                                      return (
+                                        <div key={cls} className="border-l-2 border-slate-200 dark:border-slate-800 pl-4 ml-2">
+                                          <button onClick={() => toggleNode(clsPath)} className="flex items-center space-x-1.5 text-purple-400 py-1">
+                                            <span>{expandedNodes[clsPath] ? '▼' : '►'}</span>
+                                            <span>{cls}</span>
+                                          </button>
+                                          
+                                          {expandedNodes[clsPath] && (
+                                            <div className="pl-6 ml-2 space-y-1 bg-white dark:bg-slate-950 p-2 rounded-xl mt-1 max-w-xl">
+                                              {hierarchy[prog][year][dept][sec][cls].map(s => (
+                                                <div key={s.id} className="py-1 border-b last:border-b-0 flex items-center justify-between text-[11px]">
+                                                  <div>
+                                                    <span className="font-bold text-slate-800 dark:text-slate-200">{s.name}</span>
+                                                    <span className="text-slate-400 ml-1.5">({s.roll_number})</span>
+                                                  </div>
+                                                  <div className="text-[10px] text-right">
+                                                    <span className="block text-sky-500">Guide: {s.guide}</span>
+                                                    <span className="block text-slate-400">{s.project}</span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* 3. STUDENT DIRECTORY */}
+      {activeTab === 'students' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Controls Bar */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-900 border p-6 rounded-3xl shadow-sm">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <button onClick={() => setShowAddStudent(!showAddStudent)} className="flex items-center space-x-1 py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold shadow-md shadow-sky-500/10">
+                <Plus size={14} />
+                <span>Register Student</span>
+              </button>
+              <button onClick={() => setShowUploadModal(true)} className="flex items-center space-x-1 py-2 px-4 bg-slate-100 hover:bg-slate-250 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border rounded-xl font-bold">
+                <Upload size={14} />
+                <span>Bulk Import</span>
+              </button>
+            </div>
+            
+            {/* Search Box */}
+            <div className="relative w-72">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Search size={14} /></span>
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={studentSearch}
+                onChange={e => setStudentSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Filters shelf */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-4 bg-slate-50/50 dark:bg-slate-900/10 border rounded-2xl text-xs">
+            <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-slate-900 border rounded-xl">
+              <option value="">All Academic Years</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+            
+            <select value={filterDept} onChange={e => setFilterDept(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-slate-900 border rounded-xl">
+              <option value="">All Departments</option>
+              {orgDetails.departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+
+            <input
+              type="text"
+              placeholder="Filter section..."
+              value={filterSec}
+              onChange={e => setFilterSec(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border rounded-xl"
+            />
+
+            <input
+              type="text"
+              placeholder="Filter class..."
+              value={filterClass}
+              onChange={e => setFilterClass(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border rounded-xl"
+            />
+
+            <select value={filterGuide} onChange={e => setFilterGuide(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-slate-900 border rounded-xl">
+              <option value="">All Guides</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+
+            <label className="flex items-center space-x-2 cursor-pointer select-none">
+              <input type="checkbox" checked={includeDeleted} onChange={e => setIncludeDeleted(e.target.checked)} className="rounded" />
+              <span>Show Soft-Deleted</span>
+            </label>
+          </div>
+
+          {/* Form manual add */}
+          {showAddStudent && (
+            <Card title="Add Student Roster Manually" subtitle="Automatically generates ID credential profile on submit.">
+              <form onSubmit={handleCreateStudent} className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Student Name</label>
+                  <input required type="text" value={newStudentForm.name} onChange={e => setNewStudentForm({...newStudentForm, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Email Address</label>
+                  <input required type="email" value={newStudentForm.email} onChange={e => setNewStudentForm({...newStudentForm, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Roll Number</label>
+                  <input required type="text" value={newStudentForm.roll_number} onChange={e => setNewStudentForm({...newStudentForm, roll_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Univ Roll</label>
+                  <input required type="text" value={newStudentForm.univ_roll_number} onChange={e => setNewStudentForm({...newStudentForm, univ_roll_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Reg Number</label>
+                  <input required type="text" value={newStudentForm.reg_number} onChange={e => setNewStudentForm({...newStudentForm, reg_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Mobile</label>
+                  <input type="text" value={newStudentForm.mobile} onChange={e => setNewStudentForm({...newStudentForm, mobile: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Department</label>
+                  <select required value={newStudentForm.department_id} onChange={e => setNewStudentForm({...newStudentForm, department_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
                     <option value="">Select Branch...</option>
-                    {depts.map(d => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                    {orgDetails.departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Class Year</label>
-                  <select
-                    value={newStudent.year}
-                    onChange={(e) => setNewStudent({ ...newStudent, year: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  >
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Academic Year</label>
+                  <select value={newStudentForm.year} onChange={e => setNewStudentForm({...newStudentForm, year: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
                     <option value={1}>1st Year</option>
                     <option value={2}>2nd Year</option>
                     <option value={3}>3rd Year</option>
@@ -670,131 +930,100 @@ const AdminDashboard = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Semester</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={8}
-                    required
-                    value={newStudent.semester}
-                    onChange={(e) => setNewStudent({ ...newStudent, semester: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Semester</label>
+                  <input type="number" min={1} max={8} value={newStudentForm.semester} onChange={e => setNewStudentForm({...newStudentForm, semester: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Section</label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudent.section}
-                    onChange={(e) => setNewStudent({ ...newStudent, section: e.target.value })}
-                    placeholder="A / B"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Mobile Number</label>
-                  <input
-                    type="text"
-                    value={newStudent.mobile}
-                    onChange={(e) => setNewStudent({ ...newStudent, mobile: e.target.value })}
-                    placeholder="9876543210"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Section</label>
+                  <input type="text" value={newStudentForm.section} onChange={e => setNewStudentForm({...newStudentForm, section: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-slate-450 font-bold mb-1">Batch (e.g. 2023-2027)</label>
-                  <input
-                    type="text"
-                    value={newStudent.batch}
-                    onChange={(e) => setNewStudent({ ...newStudent, batch: e.target.value })}
-                    placeholder="2023-2027"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Class Name</label>
+                  <input type="text" value={newStudentForm.class_name} onChange={e => setNewStudentForm({...newStudentForm, class_name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
                 </div>
-              </div>
-
-              <button
-                type="submit"
-                className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sky-500/10"
-              >
-                Register Student Account
-              </button>
-            </form>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Batch</label>
+                  <input type="text" value={newStudentForm.batch} onChange={e => setNewStudentForm({...newStudentForm, batch: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Program</label>
+                  <input type="text" value={newStudentForm.program} onChange={e => setNewStudentForm({...newStudentForm, program: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">CGPA</label>
+                  <input type="number" step="0.01" min={0} max={10} value={newStudentForm.cgpa} onChange={e => setNewStudentForm({...newStudentForm, cgpa: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Academic Guide</label>
+                  <select value={newStudentForm.guide_id} onChange={e => setNewStudentForm({...newStudentForm, guide_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    <option value="">Select advisor...</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button type="submit" className="w-full py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold">Register Profile</button>
+                </div>
+              </form>
+            </Card>
           )}
 
-          <Card title="All Enrolled Students" subtitle="Browse, search, or delete portfolios.">
-            <div className="relative w-80 mb-6">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <Search size={16} />
-              </span>
-              <input
-                type="text"
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                placeholder="Search by student name or roll..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
-              />
-            </div>
-
+          {/* Student table directory */}
+          <Card title="Student Directory Listing">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-450 uppercase font-semibold">
-                    <th className="py-3 px-4">Student Name</th>
-                    <th className="py-3 px-4">Roll Number</th>
+                  <tr className="border-b text-xs text-slate-400 uppercase font-bold">
+                    <th className="py-3 px-4">Name</th>
+                    <th className="py-3 px-4">Roll</th>
                     <th className="py-3 px-4">Department</th>
                     <th className="py-3 px-4">Class Year & Sec</th>
+                    <th className="py-3 px-4">Project & Progress</th>
                     <th className="py-3 px-4">Advisor Guide</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
-                  {allStudents.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-6 text-center text-slate-500">No student records found.</td>
-                    </tr>
+                  {students.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center py-6 text-slate-500 italic">No student records found.</td></tr>
                   ) : (
-                    allStudents.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">{s.name}</td>
-                        <td className="py-3.5 px-4 text-slate-550 dark:text-slate-400">{s.roll_number}</td>
-                        <td className="py-3.5 px-4">{s.department_name}</td>
-                        <td className="py-3.5 px-4">{s.year} Year (Sec {s.section})</td>
-                        <td className="py-3.5 px-4">
-                          <select
-                            value={s.guide_name === "Unassigned" ? "" : teachers.find(t => t.name === s.guide_name)?.id || ""}
-                            onChange={(e) => handleAllocateGuide(s.id, e.target.value)}
-                            className="bg-transparent text-sky-500 font-semibold focus:outline-none cursor-pointer border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-xs"
-                          >
-                            <option value="" className="text-slate-500">Unassigned</option>
-                            {teachers.map(t => (
-                              <option key={t.id} value={t.id} className="text-slate-850 dark:text-slate-100 bg-white dark:bg-slate-900">
-                                {t.name} ({t.department_name})
-                              </option>
-                            ))}
-                          </select>
+                    students.map(s => (
+                      <tr key={s.id} className={`hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors ${s.is_deleted ? 'opacity-50 line-through bg-red-500/5' : ''}`}>
+                        <td className="py-3 px-4">
+                          <span className="font-bold">{s.name}</span>
+                          <span className="block text-[10px] text-slate-400 font-normal">{s.email}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Link
-                              to={`/portfolio/${s.id}`}
-                              className="flex items-center space-x-1 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors text-sky-500"
-                            >
-                              <span>View</span>
-                              <ChevronRight size={12} />
-                            </Link>
-                            <button
-                              onClick={() => handleDeleteStudent(s.id)}
-                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all"
-                              title="Delete Student Profile"
-                            >
-                              <Trash2 size={14} />
+                        <td className="py-3 px-4 font-mono">{s.roll_number}</td>
+                        <td className="py-3 px-4">{s.department_name}</td>
+                        <td className="py-3 px-4">{s.year} Year (Sec {s.section} / {s.class_name || 'N/A'})</td>
+                        <td className="py-3 px-4">
+                          <span className="font-semibold block truncate max-w-[180px]">{s.project_title}</span>
+                          {s.project_title !== "No Project" && (
+                            <div className="w-24 bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
+                              <div className="bg-sky-500 h-1.5" style={{ width: `${s.project_progress}%` }}></div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-sky-500 font-semibold">{s.guide_name}</td>
+                        <td className="py-3 px-4 text-right space-x-1.5 shrink-0">
+                          <button onClick={() => setEditingStudent(s)} className="p-1 text-sky-500 hover:bg-sky-500/10 rounded" title="Edit Roster">
+                            <Edit2 size={12} />
+                          </button>
+                          {s.is_deleted ? (
+                            <>
+                              <button onClick={() => handleDeleteStudent(s.id, 'restore')} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded" title="Restore">
+                                <UserCheck size={12} />
+                              </button>
+                              <button onClick={() => handleDeleteStudent(s.id, 'permanent')} className="p-1 text-rose-500 hover:bg-rose-500/10 rounded" title="Permanent Delete">
+                                <Trash2 size={12} />
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={() => handleDeleteStudent(s.id, 'soft')} className="p-1 text-amber-500 hover:bg-amber-500/10 rounded" title="Soft Delete">
+                              <Trash2 size={12} />
                             </button>
-                          </div>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -806,391 +1035,643 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Department Details Modal */}
-      {selectedDept && deptAnalytics && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="font-extrabold text-xl">{selectedDept.name} ({selectedDept.code})</h3>
-                <p className="text-xs text-slate-500 mt-1">Detailed department index analytics.</p>
-              </div>
-              <button 
-                onClick={() => setSelectedDept(null)}
-                className="text-slate-500 hover:text-slate-750 dark:text-slate-400 font-bold text-sm shrink-0"
-              >
-                Close
-              </button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/25 rounded-2xl">
-                <span className="text-[10px] text-slate-450 uppercase font-bold">Students</span>
-                <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">{deptAnalytics.total_students}</p>
-              </div>
-              <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/25 rounded-2xl">
-                <span className="text-[10px] text-slate-450 uppercase font-bold">Faculty Guides</span>
-                <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">{deptAnalytics.total_teachers}</p>
-              </div>
-              <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/25 rounded-2xl">
-                <span className="text-[10px] text-slate-450 uppercase font-bold">Pending Reviews</span>
-                <p className="text-xl font-bold text-amber-500 mt-1">{deptAnalytics.status_distribution?.pending_review || 0}</p>
-              </div>
-              <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/25 rounded-2xl">
-                <span className="text-[10px] text-slate-450 uppercase font-bold">Completed Proj</span>
-                <p className="text-xl font-bold text-emerald-500 mt-1">{deptAnalytics.status_distribution?.completed || 0}</p>
-              </div>
-            </div>
-
-            {/* Students list */}
-            <div className="space-y-4">
-              <h4 className="font-bold text-sm text-slate-805 dark:text-slate-200 border-b pb-2">Student Enrolled List ({deptStudents.length})</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                      <th className="py-2">Name</th>
-                      <th className="py-2">Roll</th>
-                      <th className="py-2">Year</th>
-                      <th className="py-2">Advisor Guide</th>
-                      <th className="py-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800/40">
-                    {deptStudents.map(student => (
-                      <tr key={student.id}>
-                        <td className="py-2.5 font-bold">{student.name}</td>
-                        <td className="py-2.5 text-slate-500">{student.roll_number}</td>
-                        <td className="py-2.5">{student.year} Year</td>
-                        <td className="py-2.5">
-                          <select
-                            value={student.guide_name === "Unassigned" ? "" : teachers.find(t => t.name === student.guide_name)?.id || ""}
-                            onChange={(e) => handleAllocateGuide(student.id, e.target.value)}
-                            className="bg-transparent text-sky-500 font-semibold focus:outline-none cursor-pointer border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-xs"
-                          >
-                            <option value="" className="text-slate-500">Unassigned</option>
-                            {teachers.map(t => (
-                              <option key={t.id} value={t.id} className="text-slate-850 dark:text-slate-100 bg-white dark:bg-slate-900">
-                                {t.name} ({t.department_name})
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-2.5 text-right flex items-center justify-end space-x-3">
-                          <Link
-                            to={`/portfolio/${student.id}`}
-                            onClick={() => setSelectedDept(null)}
-                            className="text-sky-500 hover:underline font-bold"
-                          >
-                            View
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteStudent(student.id)}
-                            className="text-rose-500 hover:text-rose-600 transition-colors"
-                            title="Delete Student"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+      {/* 4. TEACHER DIRECTORY */}
+      {activeTab === 'teachers' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex justify-between items-center bg-white dark:bg-slate-900 border p-6 rounded-3xl shadow-sm">
+            <button onClick={() => setShowAddTeacher(!showAddTeacher)} className="flex items-center space-x-1 py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-md shadow-sky-500/10">
+              <Plus size={14} />
+              <span>Register Faculty</span>
+            </button>
+            <div className="relative w-72">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Search size={14} /></span>
+              <input
+                type="text"
+                placeholder="Search teachers..."
+                value={teacherSearch}
+                onChange={e => setTeacherSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
+              />
             </div>
           </div>
+
+          {showAddTeacher && (
+            <Card title="Add Faculty Profile" subtitle="Register a new academic guide or class teacher.">
+              <form onSubmit={handleCreateTeacher} className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Faculty Name</label>
+                  <input required type="text" value={newTeacherForm.name} onChange={e => setNewTeacherForm({...newTeacherForm, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Email Address</label>
+                  <input required type="email" value={newTeacherForm.email} onChange={e => setNewTeacherForm({...newTeacherForm, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Employee ID</label>
+                  <input required type="text" value={newTeacherForm.employee_id} onChange={e => setNewTeacherForm({...newTeacherForm, employee_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Department</label>
+                  <select required value={newTeacherForm.department_id} onChange={e => setNewTeacherForm({...newTeacherForm, department_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    <option value="">Select Branch...</option>
+                    {orgDetails.departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Designation</label>
+                  <input type="text" value={newTeacherForm.designation} onChange={e => setNewTeacherForm({...newTeacherForm, designation: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Qualification</label>
+                  <input type="text" value={newTeacherForm.qualification} onChange={e => setNewTeacherForm({...newTeacherForm, qualification: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Experience (Years)</label>
+                  <input type="number" value={newTeacherForm.experience} onChange={e => setNewTeacherForm({...newTeacherForm, experience: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Phone</label>
+                  <input type="text" value={newTeacherForm.phone} onChange={e => setNewTeacherForm({...newTeacherForm, phone: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Office Location</label>
+                  <input type="text" value={newTeacherForm.office_location} onChange={e => setNewTeacherForm({...newTeacherForm, office_location: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Office Hours</label>
+                  <input type="text" value={newTeacherForm.office_hours} onChange={e => setNewTeacherForm({...newTeacherForm, office_hours: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Specializations (comma-separated)</label>
+                  <input
+                    type="text"
+                    placeholder="AI, Machine Learning, Deep Learning"
+                    onChange={e => setNewTeacherForm({...newTeacherForm, specializations: e.target.value.split(',').map(s => s.trim())})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl"
+                  />
+                </div>
+                <div className="md:col-span-4 flex justify-end">
+                  <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold">Register Faculty</button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          <Card title="Teacher Directory Listing" subtitle="Browse details, specialties, or edit allocations.">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b text-xs text-slate-400 uppercase font-bold">
+                    <th className="py-3 px-4">Faculty Name</th>
+                    <th className="py-3 px-4">Employee ID</th>
+                    <th className="py-3 px-4">Department & Desg</th>
+                    <th className="py-3 px-4">Experience & Qual</th>
+                    <th className="py-3 px-4">Specializations</th>
+                    <th className="py-3 px-4">Load Ratio</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+                  {teachers.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-bold">{t.name}</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">{t.email} • {t.phone}</span>
+                      </td>
+                      <td className="py-3 px-4 font-mono">{t.employee_id}</td>
+                      <td className="py-3 px-4">{t.designation} ({t.department_name})</td>
+                      <td className="py-3 px-4">{t.qualification} ({t.experience} Years Exp)</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {t.specializations.map((spec, i) => (
+                            <span key={i} className="bg-sky-500/10 text-sky-500 dark:text-sky-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">{spec}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-semibold">
+                        <span className={t.assigned_students > t.max_capacity ? "text-rose-500 font-bold" : "text-emerald-500"}>
+                          {t.assigned_students} / {t.max_capacity}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button onClick={() => setEditingTeacher(t)} className="p-1 text-sky-500 hover:bg-sky-500/10 rounded">
+                          <Edit2 size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
       )}
 
-      {activeTab === 'allocation' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in text-slate-800 dark:text-slate-100">
-          <div className="lg:col-span-2 space-y-8">
-            <Card title="Allocate Project & Team Specifications" subtitle="Assign title, tech stack details, and difficulty levels.">
-              <form onSubmit={handleAllocateProject} className="space-y-4 text-xs">
+      {/* 5. GUIDE ALLOCATION MODULE */}
+      {activeTab === 'allocations' && (
+        <div className="space-y-8 animate-fade-in">
+          {/* Main allocation workload table */}
+          <Card title="Guide Workload Overview" subtitle="Tracks supervisor limits, assigned groups, and pending abstract reviews. High workload guides will display in red warning colors.">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b text-xs text-slate-400 uppercase font-bold">
+                    <th className="py-3 px-4">Supervisor Name</th>
+                    <th className="py-3 px-4">Department</th>
+                    <th className="py-3 px-4">Specialization Tags</th>
+                    <th className="py-3 px-4">Total Capacity</th>
+                    <th className="py-3 px-4">Assigned Students</th>
+                    <th className="py-3 px-4">Remaining Capacity</th>
+                    <th className="py-3 px-4">Projects Completed</th>
+                    <th className="py-3 px-4">Pending Abstract Evaluations</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+                  {workloads.map(wl => (
+                    <tr key={wl.id} className={`hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors ${wl.is_overloaded ? 'bg-rose-500/5 text-rose-500' : ''}`}>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center space-x-1.5">
+                          {wl.is_overloaded && <AlertTriangle size={14} className="text-rose-500 shrink-0" />}
+                          <span className="font-bold">{wl.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">{wl.department}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {wl.specializations.map((spec, i) => (
+                            <span key={i} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold">{spec}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-bold">{wl.max_capacity}</td>
+                      <td className="py-3 px-4 font-semibold">{wl.assigned_students}</td>
+                      <td className="py-3 px-4">{wl.remaining_capacity}</td>
+                      <td className="py-3 px-4">{wl.completed_projects}</td>
+                      <td className="py-3 px-4">{wl.pending_reviews}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Manual Allocation Panel */}
+            <Card title="Manual Guide Allocation" subtitle="Assign academic advisors individually to active student profiles.">
+              <form onSubmit={handleManualAllocate} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Student</label>
-                  <select
-                    required
-                    value={allocateForm.student_id}
-                    onChange={e => setAllocateForm({...allocateForm, student_id: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                  >
-                    <option value="">Select a student...</option>
-                    {allStudents.map(s => (
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Select Student</label>
+                  <select required value={manualAllocForm.student_id} onChange={e => setManualAllocForm({...manualAllocForm, student_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    <option value="">Select Student...</option>
+                    {students.filter(s => !s.is_deleted).map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.roll_number})</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Title</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="AI-Based Face Attendance System"
-                    value={allocateForm.title}
-                    onChange={e => setAllocateForm({...allocateForm, title: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Abstract Description</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Provide a brief summary synopsis..."
-                    value={allocateForm.abstract}
-                    onChange={e => setAllocateForm({...allocateForm, abstract: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Domain</label>
-                    <input
-                      type="text"
-                      placeholder="Computer Vision"
-                      value={allocateForm.domain}
-                      onChange={e => setAllocateForm({...allocateForm, domain: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Category</label>
-                    <input
-                      type="text"
-                      placeholder="Web Application"
-                      value={allocateForm.category}
-                      onChange={e => setAllocateForm({...allocateForm, category: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Technologies Used</label>
-                  <input
-                    type="text"
-                    placeholder="React, FastAPI, OpenCV"
-                    value={allocateForm.technologies}
-                    onChange={e => setAllocateForm({...allocateForm, technologies: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Difficulty Level</label>
-                  <select
-                    value={allocateForm.difficulty_level}
-                    onChange={e => setAllocateForm({...allocateForm, difficulty_level: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Select Academic Guide</label>
+                  <select required value={manualAllocForm.teacher_id} onChange={e => setManualAllocForm({...manualAllocForm, teacher_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    <option value="">Select Guide...</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.department_name})</option>
+                    ))}
                   </select>
                 </div>
-                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-md shadow-sky-500/10">
-                  Submit Allocation
-                </button>
+                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold shadow-md shadow-sky-500/10">Assign Guide</button>
               </form>
             </Card>
 
-            <Card title="Advanced Allocation Actions" subtitle="Reassign student guides or manage academic teams.">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                <div>
-                  <h5 className="font-bold text-xs text-slate-700 dark:text-slate-350 mb-3">Reassign Academic Guide</h5>
-                  <form onSubmit={handleReassignFormSubmit} className="space-y-3">
-                    <select
-                      required
-                      value={reassignForm.student_id}
-                      onChange={e => setReassignForm({...reassignForm, student_id: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                    >
-                      <option value="">Select Student...</option>
-                      {allStudents.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.roll_number})</option>
+            {/* Bulk Guide Allocation Panel */}
+            <Card title="Bulk Guide Allocation" subtitle="Allocate a specific supervisor to an entire section or branch batch at once.">
+              <form onSubmit={handleBulkAllocate} className="space-y-4 text-xs">
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Department</label>
+                    <select required value={bulkAllocForm.department_id} onChange={e => setBulkAllocForm({...bulkAllocForm, department_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                      <option value="">Select Branch...</option>
+                      {orgDetails.departments.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
                       ))}
                     </select>
-                    <select
-                      required
-                      value={reassignForm.new_guide_id}
-                      onChange={e => setReassignForm({...reassignForm, new_guide_id: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100"
-                    >
-                      <option value="">Select New Guide...</option>
-                      {teachers.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.department_name})</option>
-                      ))}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Class Year</label>
+                    <select value={bulkAllocForm.year} onChange={e => setBulkAllocForm({...bulkAllocForm, year: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                      <option value={1}>1st Year</option>
+                      <option value={2}>2nd Year</option>
+                      <option value={3}>3rd Year</option>
+                      <option value={4}>4th Year</option>
                     </select>
-                    <button type="submit" className="py-2 px-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-bold">
-                      Reassign Guide
-                    </button>
-                  </form>
-                </div>
-
-                <div>
-                  <h5 className="font-bold text-xs text-slate-700 dark:text-slate-350 mb-3">Team Restructure</h5>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-xl text-xs space-y-2">
-                    <p className="text-[11px] text-slate-550">Allows merging separate groups or splitting students into individual teams.</p>
-                    <div className="flex space-x-2 pt-2">
-                      <button onClick={() => { setSuccess(true); setError(null); }} className="py-2 px-3 bg-slate-800 dark:bg-slate-100 dark:text-slate-900 rounded-xl text-[10px] font-bold">
-                        Merge Groups
-                      </button>
-                      <button onClick={() => { setSuccess(true); setError(null); }} className="py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold border">
-                        Split Group
-                      </button>
-                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Section</label>
+                    <input type="text" value={bulkAllocForm.section} onChange={e => setBulkAllocForm({...bulkAllocForm, section: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
                   </div>
                 </div>
-              </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Select Supervisor Guide</label>
+                  <select required value={bulkAllocForm.teacher_id} onChange={e => setBulkAllocForm({...bulkAllocForm, teacher_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    <option value="">Select Guide...</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.department_name})</option>
+                    ))}
+                  </select>
+                </div>
+                <button type="submit" className="py-2.5 px-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold shadow-md shadow-indigo-500/10">Bulk Allocate Guide</button>
+              </form>
             </Card>
           </div>
 
-          <div>
-            <Card title="Allocation History Logs">
-              <div className="space-y-4 divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto pr-1 text-xs">
-                {allocationHistory.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic py-4">No allocation audits recorded.</p>
-                ) : (
-                  allocationHistory.map(log => (
-                    <div key={log.id} className="pt-3 first:pt-0">
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-indigo-500 block">{log.action.replace('_', ' ')}</span>
-                      <p className="text-xs text-slate-655 dark:text-slate-355 mt-1 leading-normal">{log.details}</p>
-                      <span className="text-[9px] text-slate-400 mt-1 block">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* General Detail View Modal */}
-      {activeDetailModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="font-extrabold text-xl capitalize text-slate-850 dark:text-slate-100">
-                  {activeDetailModal.replace('_', ' ')} Details
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">Detailed list of all records.</p>
-              </div>
-              <button 
-                onClick={() => {
-                  setActiveDetailModal(null);
-                  setDetailModalData([]);
-                }}
-                className="text-slate-505 hover:text-slate-750 dark:text-slate-400 font-bold text-sm shrink-0"
+          {/* Smart Guide Recommendation */}
+          <Card title="Intelligent Smart Guide Advisor Recommendations" subtitle="Enter a student's project ID to automatically analyze technology keyword overlap and workload limits to suggest matching guides.">
+            <form onSubmit={handleGetRecommendation} className="flex space-x-3 mb-6">
+              <select
+                required
+                value={recommendProjectId}
+                onChange={e => setRecommendProjectId(e.target.value)}
+                className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs max-w-sm w-full"
               >
-                Close
+                <option value="">Select Project to Recommend Guide...</option>
+                {students.filter(s => s.project_title !== "No Project").map(s => (
+                  <option key={s.id} value={s.id}>{s.name} - Project: {s.project_title}</option>
+                ))}
+              </select>
+              <button type="submit" className="py-2 px-5 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md shadow-indigo-500/10">
+                <Sparkles size={14} />
+                <span>Get Recommendations</span>
               </button>
+            </form>
+
+            <div className="space-y-4">
+              {recommendations.length === 0 ? (
+                <p className="text-xs text-slate-500 italic">No recommendations searched yet.</p>
+              ) : (
+                recommendations.map((rec, i) => (
+                  <div key={i} className="p-4 border rounded-2xl bg-gradient-to-r from-sky-500/5 to-indigo-500/5 flex items-center justify-between">
+                    <div>
+                      <h6 className="font-extrabold text-xs text-indigo-500">{rec.teacher_name}</h6>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-normal">{rec.reason}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {rec.matching_keywords.map((kw, idx) => (
+                          <span key={idx} className="bg-sky-500/10 text-sky-500 dark:text-sky-400 px-1.5 py-0.5 rounded text-[8px] uppercase font-bold tracking-wider">{kw} Match</span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setManualAllocForm({ student_id: recommendProjectId, teacher_id: rec.teacher_id });
+                        setError(null);
+                        setSuccess(false);
+                      }}
+                      className="py-1.5 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-[10px] font-bold"
+                    >
+                      Use Recommendation
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
+          </Card>
+        </div>
+      )}
 
-            {modalLoading ? (
-              <p className="text-center py-8 text-xs text-slate-500">Loading data...</p>
-            ) : (
-              <div className="overflow-x-auto">
-                {activeDetailModal === 'mentees' && (
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 uppercase font-semibold">
-                        <th className="py-2">Student Name</th>
-                        <th className="py-2">Roll Number</th>
-                        <th className="py-2">Department</th>
-                        <th className="py-2">Class Year & Sec</th>
-                        <th className="py-2">Advisor Guide</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {detailModalData.map(s => (
-                        <tr key={s.id}>
-                          <td className="py-2.5 font-bold text-slate-800 dark:text-slate-100">{s.name}</td>
-                          <td className="py-2.5 text-slate-500">{s.roll_number}</td>
-                          <td className="py-2.5">{s.department_name}</td>
-                          <td className="py-2.5">{s.year} Year (Sec {s.section})</td>
-                          <td className="py-2.5 text-sky-500 font-semibold">{s.guide_name}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
-                {activeDetailModal === 'guides' && (
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 uppercase font-semibold">
-                        <th className="py-2">Guide Name</th>
-                        <th className="py-2">Email</th>
-                        <th className="py-2">Department</th>
-                        <th className="py-2">Designation</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {detailModalData.map(t => (
-                        <tr key={t.id}>
-                          <td className="py-2.5 font-bold text-slate-800 dark:text-slate-100">{t.name}</td>
-                          <td className="py-2.5 text-slate-500">{t.email}</td>
-                          <td className="py-2.5">{t.department_name}</td>
-                          <td className="py-2.5 font-medium">{t.designation || 'Faculty Member'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
-                {['submitted_projects', 'pending_reviews', 'approved_projects'].includes(activeDetailModal) && (
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 uppercase font-semibold">
-                        <th className="py-2">Project Title</th>
-                        <th className="py-2">Student Name</th>
-                        <th className="py-2">Advisor Guide</th>
-                        <th className="py-2">Domain</th>
-                        <th className="py-2 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {detailModalData.map(p => (
-                        <tr key={p.id}>
-                          <td className="py-2.5 font-bold text-slate-800 dark:text-slate-100">{p.title}</td>
-                          <td className="py-2.5 text-slate-600 dark:text-slate-400">{p.student_name}</td>
-                          <td className="py-2.5 text-slate-550">{p.guide_name}</td>
-                          <td className="py-2.5">{p.domain}</td>
-                          <td className="py-2.5 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              p.status === 'approved' || p.status === 'completed'
-                                ? 'bg-emerald-500/10 text-emerald-500'
-                                : p.status === 'pending_review'
-                                ? 'bg-amber-500/10 text-amber-500'
-                                : 'bg-slate-500/10 text-slate-550'
-                            }`}>
-                              {p.status.replace('_', ' ')}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+      {/* 6. ACADEMIC SETUP TAB */}
+      {activeTab === 'org' && (
+        <div className="space-y-8 animate-fade-in text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Depts */}
+            <Card title="Departments Index">
+              <button onClick={() => setShowAddDept(!showAddDept)} className="flex items-center space-x-1 py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-bold mb-4">
+                <Plus size={12} />
+                <span>Create Department</span>
+              </button>
+              {showAddDept && (
+                <form onSubmit={handleCreateDept} className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl space-y-3 mb-4">
+                  <input required placeholder="Department Name" value={deptForm.name} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl" />
+                  <input required placeholder="Code (e.g. CSE)" value={deptForm.code} onChange={e => setDeptForm({...deptForm, code: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-955 border rounded-xl" />
+                  <button type="submit" className="py-1.5 px-4 bg-sky-500 text-white rounded-xl font-bold">Add</button>
+                </form>
+              )}
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {orgDetails.departments.map(d => (
+                  <div key={d.id} className="p-3 border rounded-xl flex justify-between items-center bg-slate-50/20 dark:bg-slate-900/10">
+                    <span className="font-bold">{d.name}</span>
+                    <span className="font-mono text-slate-400">{d.code}</span>
+                  </div>
+                ))}
               </div>
-            )}
+            </Card>
+
+            {/* Sections */}
+            <Card title="Sections Directory">
+              <button onClick={() => setShowAddSec(!showAddSec)} className="flex items-center space-x-1 py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-bold mb-4">
+                <Plus size={12} />
+                <span>Create Section</span>
+              </button>
+              {showAddSec && (
+                <form onSubmit={handleCreateSection} className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl space-y-3 mb-4">
+                  <input required placeholder="Section Name (e.g. Section A)" value={secForm.name} onChange={e => setSecForm({...secForm, name: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl" />
+                  <button type="submit" className="py-1.5 px-4 bg-sky-500 text-white rounded-xl font-bold">Add</button>
+                </form>
+              )}
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {orgDetails.sections.map(s => (
+                  <div key={s.id} className="p-3 border rounded-xl flex justify-between items-center bg-slate-50/20 dark:bg-slate-900/10">
+                    <span>{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Classes */}
+            <Card title="Classes Allocation Manager" className="md:col-span-2">
+              <button onClick={() => setShowAddClass(!showAddClass)} className="flex items-center space-x-1 py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-bold mb-4">
+                <Plus size={12} />
+                <span>Create Class & Assign Teacher</span>
+              </button>
+              {showAddClass && (
+                <form onSubmit={handleCreateClass} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl mb-4">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Class Name</label>
+                    <input required placeholder="e.g. Class A1" value={classForm.name} onChange={e => setClassForm({...classForm, name: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Department</label>
+                    <select required value={classForm.department_id} onChange={e => setClassForm({...classForm, department_id: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl">
+                      <option value="">Select Branch...</option>
+                      {orgDetails.departments.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Year</label>
+                    <select required value={classForm.academic_year_id} onChange={e => setClassForm({...classForm, academic_year_id: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl">
+                      <option value="">Select Year...</option>
+                      {orgDetails.years.map(y => (
+                        <option key={y.id} value={y.id}>{y.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Section</label>
+                    <select required value={classForm.section_id} onChange={e => setClassForm({...classForm, section_id: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl">
+                      <option value="">Select Section...</option>
+                      {orgDetails.sections.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Class Teacher</label>
+                    <select value={classForm.class_teacher_id} onChange={e => setClassForm({...classForm, class_teacher_id: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl">
+                      <option value="">Select Faculty...</option>
+                      {teachers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Capacity</label>
+                    <input type="number" value={classForm.capacity} onChange={e => setClassForm({...classForm, capacity: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-slate-950 border rounded-xl" />
+                  </div>
+                  <div className="flex items-end md:col-span-2">
+                    <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold w-full">Create Class</button>
+                  </div>
+                </form>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {orgDetails.classes.map(c => {
+                  const dept = orgDetails.departments.find(d => d.id === c.department_id)?.code || "N/A";
+                  const yr = orgDetails.years.find(y => y.id === c.academic_year_id)?.name || "N/A";
+                  const sec = orgDetails.sections.find(s => s.id === c.section_id)?.name || "N/A";
+                  const teacher = teachers.find(t => t.id === c.class_teacher_id)?.name || "Unassigned";
+                  return (
+                    <div key={c.id} className="p-4 border rounded-2xl bg-slate-50/20 dark:bg-slate-900/10">
+                      <span className="font-extrabold text-sm block">{c.name}</span>
+                      <p className="text-slate-400 text-[10px] mt-1">Branch: {dept} • {yr} • {sec}</p>
+                      <span className="block text-sky-500 mt-2">Teacher: {teacher}</span>
+                      <span className="block text-slate-500">Student Capacity: {c.capacity}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
           </div>
         </div>
       )}
 
-      {error && (
-        <div className="text-xs text-rose-400 flex items-center space-x-2 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
-          <AlertCircle size={16} />
-          <span>{error}</span>
+      {/* 7. REPORTS EXPORTER */}
+      {activeTab === 'reports' && (
+        <Card title="College Academic Project System Reports Center" subtitle="Generate structured lists or workload diagnostics files in spreadsheet formats.">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs mt-4">
+            {[
+              { id: 'student_list', label: 'All Registered Students', desc: 'Enrolled profiles, rolls, assigned guides, and project details.' },
+              { id: 'teacher_list', label: 'Faculty Directory & Specialties', desc: 'Employee records, designation, qualification, and specialty arrays.' },
+              { id: 'guide_workload', label: 'Supervisor Load Report', desc: 'Allocated load metrics, capacity flags, and completed group counts.' }
+            ].map(rep => (
+              <div key={rep.id} className="p-5 border rounded-2xl bg-slate-50/20 dark:bg-slate-900/10 flex flex-col justify-between h-[160px]">
+                <div>
+                  <h6 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">{rep.label}</h6>
+                  <p className="text-slate-450 text-[11px] mt-1.5 leading-normal">{rep.desc}</p>
+                </div>
+                <div className="flex space-x-2 pt-4">
+                  <a
+                    href={adminAPI.getReportsDownloadUrl(rep.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/10"
+                  >
+                    <Download size={12} />
+                    <span>Download CSV</span>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* EDIT STUDENT DIALOG */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative text-xs">
+            <h3 className="font-extrabold text-lg mb-4">Edit Student Portfolio</h3>
+            <form onSubmit={handleUpdateStudent} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Student Name</label>
+                <input required type="text" value={editingStudent.name} onChange={e => setEditingStudent({...editingStudent, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Email</label>
+                <input required type="email" value={editingStudent.email} onChange={e => setEditingStudent({...editingStudent, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Roll Number</label>
+                <input required type="text" value={editingStudent.roll_number} onChange={e => setEditingStudent({...editingStudent, roll_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Univ Roll</label>
+                <input required type="text" value={editingStudent.univ_roll_number} onChange={e => setEditingStudent({...editingStudent, univ_roll_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Reg Number</label>
+                <input required type="text" value={editingStudent.reg_number} onChange={e => setEditingStudent({...editingStudent, reg_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Mobile</label>
+                <input type="text" value={editingStudent.mobile || ''} onChange={e => setEditingStudent({...editingStudent, mobile: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Department</label>
+                <select required value={editingStudent.department_id} onChange={e => setEditingStudent({...editingStudent, department_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                  {orgDetails.departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Class Year</label>
+                <select value={editingStudent.year} onChange={e => setEditingStudent({...editingStudent, year: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                  <option value={1}>1st Year</option>
+                  <option value={2}>2nd Year</option>
+                  <option value={3}>3rd Year</option>
+                  <option value={4}>4th Year</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Semester</label>
+                <input type="number" min={1} max={8} value={editingStudent.semester} onChange={e => setEditingStudent({...editingStudent, semester: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Section</label>
+                <input type="text" value={editingStudent.section} onChange={e => setEditingStudent({...editingStudent, section: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Class Name</label>
+                <input type="text" value={editingStudent.class_name || ''} onChange={e => setEditingStudent({...editingStudent, class_name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Batch</label>
+                <input type="text" value={editingStudent.batch || ''} onChange={e => setEditingStudent({...editingStudent, batch: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Program</label>
+                <input type="text" value={editingStudent.program || ''} onChange={e => setEditingStudent({...editingStudent, program: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">CGPA</label>
+                <input type="number" step="0.01" min={0} max={10} value={editingStudent.cgpa || ''} onChange={e => setEditingStudent({...editingStudent, cgpa: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Guide Advisor</label>
+                <select value={editingStudent.guide_id || ''} onChange={e => setEditingStudent({...editingStudent, guide_id: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                  <option value="">Unassigned</option>
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-3 flex justify-end space-x-2 pt-4">
+                <button type="button" onClick={() => setEditingStudent(null)} className="py-2 px-5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl font-bold border">Cancel</button>
+                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold">Save Changes</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      {success && (
-        <div className="text-xs text-emerald-400 flex items-center space-x-2 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-          <CheckCircle size={16} />
-          <span>Operation completed successfully!</span>
+      {/* EDIT TEACHER DIALOG */}
+      {editingTeacher && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative text-xs">
+            <h3 className="font-extrabold text-lg mb-4">Edit Faculty Profile</h3>
+            <form onSubmit={handleUpdateTeacher} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Faculty Name</label>
+                <input required type="text" value={editingTeacher.name} onChange={e => setEditingTeacher({...editingTeacher, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Email</label>
+                <input required type="email" value={editingTeacher.email} onChange={e => setEditingTeacher({...editingTeacher, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Designation</label>
+                <input type="text" value={editingTeacher.designation} onChange={e => setEditingTeacher({...editingTeacher, designation: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Qualification</label>
+                <input type="text" value={editingTeacher.qualification} onChange={e => setEditingTeacher({...editingTeacher, qualification: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Experience (Years)</label>
+                <input type="number" value={editingTeacher.experience} onChange={e => setEditingTeacher({...editingTeacher, experience: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Phone</label>
+                <input type="text" value={editingTeacher.phone} onChange={e => setEditingTeacher({...editingTeacher, phone: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Office Location</label>
+                <input type="text" value={editingTeacher.office_location} onChange={e => setEditingTeacher({...editingTeacher, office_location: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Office Hours</label>
+                <input type="text" value={editingTeacher.office_hours} onChange={e => setEditingTeacher({...editingTeacher, office_hours: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Maximum Allocation Capacity</label>
+                <input type="number" value={editingTeacher.max_capacity} onChange={e => setEditingTeacher({...editingTeacher, max_capacity: parseInt(e.target.value) || 20})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Specializations (comma-separated)</label>
+                <input
+                  type="text"
+                  value={editingTeacher.specializations.join(', ')}
+                  onChange={e => setEditingTeacher({...editingTeacher, specializations: e.target.value.split(',').map(s => s.trim())})}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl"
+                />
+              </div>
+              <div className="md:col-span-3 flex justify-end space-x-2 pt-4">
+                <button type="button" onClick={() => setEditingTeacher(null)} className="py-2 px-5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl font-bold border">Cancel</button>
+                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* BULK UPLOAD MODAL */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in text-xs">
+          <div className="bg-white dark:bg-slate-900 border rounded-3xl w-full max-w-lg p-8 shadow-2xl relative">
+            <h3 className="font-extrabold text-lg mb-2">Bulk Import Students</h3>
+            <p className="text-slate-450 text-[10px] mb-4">Supported formats: Excel (.xlsx), CSV (.csv). Ensure headers match name, email, roll, class details.</p>
+            
+            <form onSubmit={handleBulkUpload} className="space-y-4">
+              <input
+                required
+                type="file"
+                accept=".csv, .xlsx"
+                onChange={e => setUploadFile(e.target.files[0])}
+                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border rounded-xl border-dashed cursor-pointer"
+              />
+              {uploadSummary && (
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 border rounded-2xl text-[11px] font-mono leading-relaxed space-y-1">
+                  <span className="block text-emerald-500 font-bold">{uploadSummary.imported} Students Imported</span>
+                  <span className="block text-amber-500 font-bold">{uploadSummary.duplicates} Duplicate Records Bypassed</span>
+                  <span className="block text-rose-500 font-bold">{uploadSummary.invalid} Invalid Records Bypassed</span>
+                </div>
+              )}
+              <div className="flex justify-end space-x-2 pt-4">
+                <button type="button" onClick={() => { setShowUploadModal(false); setUploadSummary(null); }} className="py-2 px-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl border font-bold">Close</button>
+                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold">Start Import</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

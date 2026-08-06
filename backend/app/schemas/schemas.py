@@ -51,6 +51,12 @@ class UserOut(UserBase):
         from_attributes = True
 
 # Teacher Schemas
+class TeacherSpecializationOut(BaseModel):
+    id: int
+    specialization: str
+    class Config:
+        from_attributes = True
+
 class TeacherBase(BaseModel):
     department_id: int
     designation: str
@@ -61,6 +67,7 @@ class TeacherBase(BaseModel):
     office_location: Optional[str] = None
     office_hours: Optional[str] = None
     profile_pic_url: Optional[str] = None
+    experience: Optional[int] = 0
 
 class TeacherCreate(TeacherBase):
     name: str
@@ -77,8 +84,10 @@ class TeacherOut(BaseModel):
     office_location: Optional[str] = None
     office_hours: Optional[str] = None
     profile_pic_url: Optional[str] = None
+    experience: Optional[int] = 0
     department: DepartmentOut
     user: UserOut
+    specializations: Optional[List[TeacherSpecializationOut]] = []
     class Config:
         from_attributes = True
 
@@ -179,6 +188,7 @@ class StudentBase(BaseModel):
     class_name: Optional[str] = None
     admission_year: Optional[int] = None
     cgpa: Optional[float] = None
+    is_deleted: Optional[bool] = False
 
 class StudentCreate(StudentBase):
     name: str

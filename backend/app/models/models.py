@@ -45,11 +45,13 @@ class Teacher(Base):
     office_location = Column(String(255), default="Block C, Room 302")
     office_hours = Column(String(255), default="Mon/Wed/Fri 2:00 PM - 4:00 PM")
     profile_pic_url = Column(String(255))
+    experience = Column(Integer, default=0)
 
     user = relationship("User", back_populates="teacher_profile")
     department = relationship("Department", back_populates="teachers")
     students = relationship("Student", back_populates="guide", foreign_keys="[Student.guide_id]")
     feedbacks = relationship("Feedback", back_populates="teacher")
+    specializations = relationship("TeacherSpecialization", back_populates="teacher", cascade="all, delete-orphan")
 
 class Student(Base):
     __tablename__ = "students"
@@ -80,6 +82,7 @@ class Student(Base):
     class_name = Column(String(100))
     admission_year = Column(Integer)
     cgpa = Column(Float)
+    is_deleted = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="student_profile")
     department = relationship("Department", back_populates="students")
@@ -453,3 +456,64 @@ class Analytics(Base):
     metric_key = Column(String(100), unique=True, index=True)
     metric_value = Column(Text)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class TeacherSpecialization(Base):
+    __tablename__ = "teacher_specializations"
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
+    specialization = Column(String(100), nullable=False)
+
+    teacher = relationship("Teacher", back_populates="specializations")
+
+class GuideAllocation(Base):
+    __tablename__ = "guide_allocations"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
+    allocated_at = Column(DateTime, server_default=func.now())
+
+class GuideWorkload(Base):
+    __tablename__ = "guide_workloads"
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="CASCADE"), unique=True, nullable=False)
+    max_capacity = Column(Integer, default=20)
+
+class AcademicYear(Base):
+    __tablename__ = "academic_years"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+
+class Section(Base):
+    __tablename__ = "sections"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+
+class Class(Base):
+    __tablename__ = "classes"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    academic_year_id = Column(Integer, ForeignKey("academic_years.id"), nullable=False)
+    section_id = Column(Integer, ForeignKey("sections.id"), nullable=False)
+    class_teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
+    capacity = Column(Integer, default=60)
+
+    department = relationship("Department")
+    academic_year = relationship("AcademicYear")
+    section = relationship("Section")
+    class_teacher = relationship("Teacher")
+
+class Program(Base):
+    __tablename__ = "programs"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+class Semester(Base):
+    __tablename__ = "semesters"
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(Integer, unique=True, nullable=False)
+
+class Batch(Base):
+    __tablename__ = "batches"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
