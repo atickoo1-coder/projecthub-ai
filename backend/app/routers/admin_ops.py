@@ -118,11 +118,11 @@ def get_analytics_charts(db: Session = Depends(get_db)):
 @router.get("/students")
 def get_students_directory(
     search: Optional[str] = None,
-    year: Optional[int] = None,
-    department_id: Optional[int] = None,
+    year: Optional[str] = None,
+    department_id: Optional[str] = None,
     section: Optional[str] = None,
     class_name: Optional[str] = None,
-    guide_id: Optional[int] = None,
+    guide_id: Optional[str] = None,
     include_deleted: bool = False,
     db: Session = Depends(get_db)
 ):
@@ -138,16 +138,16 @@ def get_students_directory(
             (models.Student.reg_number.ilike(f"%{search}%"))
         )
         
-    if year:
-        query = query.filter(models.Student.year == year)
-    if department_id:
-        query = query.filter(models.Student.department_id == department_id)
+    if year and str(year).strip():
+        query = query.filter(models.Student.year == int(year))
+    if department_id and str(department_id).strip():
+        query = query.filter(models.Student.department_id == int(department_id))
     if section:
         query = query.filter(models.Student.section.ilike(section))
     if class_name:
         query = query.filter(models.Student.class_name.ilike(class_name))
-    if guide_id:
-        query = query.filter(models.Student.guide_id == guide_id)
+    if guide_id and str(guide_id).strip():
+        query = query.filter(models.Student.guide_id == int(guide_id))
         
     students = query.all()
     
