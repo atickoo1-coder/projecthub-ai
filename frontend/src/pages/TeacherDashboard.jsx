@@ -89,7 +89,7 @@ const TeacherDashboard = () => {
   });
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('profile');
   const [selectedStudent, setSelectedStudent] = useState(null);
   
   // Search & Filter state
@@ -670,7 +670,6 @@ const TeacherDashboard = () => {
       {/* Navigation tabs row */}
       <div className="border-b border-slate-200 dark:border-slate-800 overflow-x-auto flex space-x-1.5 pb-0.5 scrollbar-thin">
         {[
-          { id: 'overview', label: 'Overview', icon: Users },
           { id: 'profile', label: 'Faculty Profile', icon: User },
           { id: 'mentees', label: 'Mentees Directory', icon: BookOpen },
           { id: 'evaluations', label: 'Evaluation Hub', icon: FileCheck },
@@ -700,117 +699,6 @@ const TeacherDashboard = () => {
           );
         })}
       </div>
-
-      {/* 1. OVERVIEW */}
-      {activeTab === 'overview' && (
-        <div className="space-y-8 animate-fade-in">
-          {/* Summary metrics row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              { label: 'Assigned Students', val: summaryStats.assigned_students, color: 'border-sky-500 text-sky-500' },
-              { label: 'Project Groups', val: summaryStats.project_groups, color: 'border-indigo-500 text-indigo-500' },
-              { label: 'Pending Abstracts', val: summaryStats.pending_abstracts, color: 'border-amber-500 text-amber-500' },
-              { label: 'Pending Reports', val: summaryStats.pending_reports, color: 'border-pink-500 text-pink-500' },
-              { label: 'Pending Plagiarism', val: summaryStats.pending_plagiarism, color: 'border-rose-500 text-rose-500' },
-              { label: 'Pending Feedback', val: summaryStats.pending_feedback, color: 'border-purple-500 text-purple-500' },
-              { label: 'Completed Reviews', val: summaryStats.completed_reviews, color: 'border-emerald-500 text-emerald-500' },
-              { label: 'Upcoming Meetings', val: summaryStats.upcoming_meetings, color: 'border-teal-500 text-teal-500' },
-              { label: 'Average Progress', val: `${summaryStats.average_progress}%`, color: 'border-cyan-500 text-cyan-500' }
-            ].map((stat, idx) => (
-              <Card key={idx} className="border-l-4 border-slate-200 dark:border-slate-800 p-4">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{stat.label}</span>
-                <span className={`text-2xl font-extrabold block mt-1 ${stat.color.split(' ')[1]}`}>{stat.val}</span>
-              </Card>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              {/* Proposals and reviews */}
-              <Card title="Pending Review Queue" subtitle="Evaluate abstracts, weekly logs, or plagiarism risks.">
-                {pendingProjects.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-xs text-slate-500 italic">No pending abstract approvals.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {pendingProjects.map(p => (
-                      <div key={p.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/20 dark:bg-slate-900/10 flex items-center justify-between">
-                        <div>
-                          <h5 className="font-bold text-xs">{p.title}</h5>
-                          <span className="text-[10px] text-slate-400 mt-1 block">
-                            Student: {p.student?.user?.name} ({p.student?.roll_number})
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedEvalProj(p);
-                            setAbstractForm({ status: 'approved', marks: p.marks || 8, remarks: '' });
-                            setActiveTab('evaluations');
-                          }}
-                          className="py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-[10px] font-bold"
-                        >
-                          Review Abstract
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-
-              {/* Progress summaries */}
-              <Card title="Mentees Progress Summary">
-                <div className="h-[200px]">
-                  <Bar 
-                    data={getProgressChartData()}
-                    options={{ responsive: true, maintainAspectRatio: false }}
-                  />
-                </div>
-              </Card>
-            </div>
-
-            <div className="space-y-8">
-              {/* Sync Meetings */}
-              <Card title="Sync Sessions Today" subtitle="Review scheduled meeting hours.">
-                {meetings.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic text-center py-6">No meetings scheduled for today.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {meetings.slice(0, 3).map(m => (
-                      <div key={m.id} className="p-3 bg-slate-50 dark:bg-slate-900 border rounded-xl flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-xs block">{m.title}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {new Date(m.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {m.duration_minutes} mins
-                          </span>
-                        </div>
-                        <span className="text-[9px] bg-sky-500/10 text-sky-500 font-bold px-2 py-0.5 rounded uppercase">
-                          {m.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-
-              {/* Notifications */}
-              <Card title="Notifications Panel">
-                <div className="space-y-3 divide-y divide-slate-100 dark:divide-slate-800">
-                  <div className="pt-2 text-xs">
-                    <span className="font-semibold block">New Abstract Uploaded</span>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Alice Smith submitted abstract for review.</p>
-                  </div>
-                  <div className="pt-2 text-xs">
-                    <span className="font-semibold block">Meeting requested</span>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Bob Jones requested design review tomorrow.</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 2. PROFILE */}
       {activeTab === 'profile' && (
         <Card title="Faculty Details Manager" className="animate-fade-in">
