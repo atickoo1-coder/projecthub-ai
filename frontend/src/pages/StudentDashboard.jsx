@@ -698,7 +698,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
       setGithubStats(response);
       
       // Update project model github_repo link to keep in sync
-      const updatedProj = await projectAPI.updateProject(activeProject.id, {
+      const updatedProj = await projectAPI.update(activeProject.id, {
         github_repo: githubForm.repo_name
       });
       setActiveProject(updatedProj);
@@ -717,7 +717,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
     e.preventDefault();
     if (!activeProject) return;
     try {
-      const updatedProj = await projectAPI.updateProject(activeProject.id, {
+      const updatedProj = await projectAPI.update(activeProject.id, {
         live_url: liveUrlForm
       });
       setActiveProject(updatedProj);
