@@ -2577,28 +2577,34 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           <Card 
             title="GitHub Integration Dashboard"
             headerAction={
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => editingGithub ? handleCancelEditGithub() : setEditingGithub(true)}
-                  className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
-                >
-                  <Edit2 size={12} />
-                  <span>{editingGithub ? "Cancel" : "Edit Settings"}</span>
-                </button>
-                {!editingGithub && (
+              activeProject && (
+                <div className="flex items-center space-x-2">
                   <button
-                    onClick={handleSyncGithub}
-                    disabled={syncingGithub}
-                    className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all"
+                    onClick={() => editingGithub ? handleCancelEditGithub() : setEditingGithub(true)}
+                    className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-855 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
                   >
-                    <RefreshCw className={syncingGithub ? "animate-spin" : ""} size={12} />
-                    <span>Refresh Repo</span>
+                    <Edit2 size={12} />
+                    <span>{editingGithub ? "Cancel" : "Edit Settings"}</span>
                   </button>
-                )}
-              </div>
+                  {!editingGithub && (
+                    <button
+                      onClick={handleSyncGithub}
+                      disabled={syncingGithub}
+                      className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all"
+                    >
+                      <RefreshCw className={syncingGithub ? "animate-spin" : ""} size={12} />
+                      <span>Refresh Repo</span>
+                    </button>
+                  )}
+                </div>
+              )
             }
           >
-            {editingGithub ? (
+            {!activeProject ? (
+              <div className="text-center py-10">
+                <p className="text-xs text-slate-500">No project has been allocated or approved yet. Please submit your project proposal and get it approved to set up GitHub Integration.</p>
+              </div>
+            ) : editingGithub ? (
               <form onSubmit={handleUpdateGithub} className="space-y-4">
                 <div>
                   <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Repository Path</label>
@@ -2717,16 +2723,22 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           <Card 
             title="Live Project Deploy Credentials"
             headerAction={
-              <button
-                onClick={() => editingLive ? handleCancelEditLive() : setEditingLive(true)}
-                className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
-              >
-                <Edit2 size={12} />
-                <span>{editingLive ? "Cancel" : "Edit Credentials"}</span>
-              </button>
+              activeProject && (
+                <button
+                  onClick={() => editingLive ? handleCancelEditLive() : setEditingLive(true)}
+                  className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
+                >
+                  <Edit2 size={12} />
+                  <span>{editingLive ? "Cancel" : "Edit Credentials"}</span>
+                </button>
+              )
             }
           >
-            {editingLive ? (
+            {!activeProject ? (
+              <div className="text-center py-10">
+                <p className="text-xs text-slate-500">No project has been allocated or approved yet. Please submit your project proposal and get it approved to set up deployment credentials.</p>
+              </div>
+            ) : editingLive ? (
               <form onSubmit={handleUpdateLiveUrl} className="space-y-4">
                 <div>
                   <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Production Live URL</label>
