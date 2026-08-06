@@ -730,6 +730,20 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
     }
   };
 
+  const handleStartEditGithub = () => {
+    if (githubStats) {
+      setGithubForm({
+        repo_name: githubStats.repo_name || '',
+        branch: githubStats.branch || 'main',
+        commit_count: githubStats.commit_count || 0,
+        stars: githubStats.stars || 0,
+        issues: githubStats.issues || 0,
+        latest_commit: githubStats.latest_commit || ''
+      });
+    }
+    setEditingGithub(true);
+  };
+
   const handleCancelEditGithub = () => {
     if (githubStats) {
       setGithubForm({
@@ -2580,7 +2594,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
               activeProject && (
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => editingGithub ? handleCancelEditGithub() : setEditingGithub(true)}
+                    onClick={() => editingGithub ? handleCancelEditGithub() : handleStartEditGithub()}
                     className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-855 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
                   >
                     <Edit2 size={12} />
