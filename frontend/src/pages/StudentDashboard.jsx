@@ -1131,7 +1131,6 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           { id: 'profile', label: 'Profile & Skills', icon: User },
           { id: 'lifecycle', label: 'Project Lifecycle', icon: FileText },
           { id: 'overview', label: 'Overview', icon: Folder },
-          { id: 'milestones', label: 'Milestones & Tasks', icon: CheckCircle },
           { id: 'files', label: 'File Locker', icon: UploadCloud },
           { id: 'integrations', label: 'GitHub Integration Dashboard', icon: Github },
           { id: 'guide', label: 'Advisor Guide', icon: User },
@@ -2473,136 +2472,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
         </div>
       )}
 
-      {/* 4. MILESTONES & KANBAN */}
-      {activeTab === 'milestones' && (
-        <div className="space-y-8 animate-fade-in">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left side: Add milestone form */}
-            <div className="lg:col-span-1">
-              <Card title="Add Project Milestone" subtitle="Submit new project deliverable targets.">
-                <form onSubmit={handleAddMilestone} className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Milestone Title</label>
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="e.g. Database Architecture"
-                      value={milestoneForm.title} 
-                      onChange={e => setMilestoneForm({...milestoneForm, title: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Description</label>
-                    <textarea 
-                      required 
-                      placeholder="Specify targets..."
-                      value={milestoneForm.description} 
-                      onChange={e => setMilestoneForm({...milestoneForm, description: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none"
-                      rows={2}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Date</label>
-                      <input 
-                        type="date" 
-                        required
-                        value={milestoneForm.deadline} 
-                        onChange={e => setMilestoneForm({...milestoneForm, deadline: e.target.value})}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Max Marks</label>
-                      <input 
-                        type="number" 
-                        required
-                        value={milestoneForm.max_marks} 
-                        onChange={e => setMilestoneForm({...milestoneForm, max_marks: e.target.value})}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Initial Status</label>
-                    <select
-                      value={milestoneForm.status}
-                      onChange={e => setMilestoneForm({...milestoneForm, status: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
-                  <button type="submit" className="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sky-500/10">
-                    Add Milestone
-                  </button>
-                </form>
-              </Card>
-            </div>
 
-            {/* Right side: Milestones Table */}
-            <div className="lg:col-span-2">
-              <Card title="Milestone Assessments & Evaluator Reviews" subtitle="Academic scores and guides evaluation feedback.">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 uppercase font-semibold">
-                        <th className="py-2.5 px-4">Milestone</th>
-                        <th className="py-2.5 px-4">Description</th>
-                        <th className="py-2.5 px-4">Target Date</th>
-                        <th className="py-2.5 px-4">Status</th>
-                        <th className="py-2.5 px-4">Score</th>
-                        <th className="py-2.5 px-4">Guide Comments</th>
-                        <th className="py-2.5 px-4 text-right">Delete</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
-                      {milestones.map((m, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                          <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-150">{m.title}</td>
-                          <td className="py-3 px-4 text-slate-500 max-w-[150px] truncate" title={m.description}>{m.description}</td>
-                          <td className="py-3 px-4 text-slate-500 font-semibold">{m.deadline}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                              m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                              m.status === 'in_progress' ? 'bg-sky-500/10 text-sky-500' :
-                              'bg-slate-200 text-slate-500 dark:bg-slate-800'
-                            }`}>
-                              {m.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-extrabold text-indigo-500">{m.marks !== null ? `${m.marks} / ${m.max_marks}` : 'Awaiting'}</td>
-                          <td className="py-3 px-4 text-slate-605 dark:text-slate-355 italic truncate max-w-[120px]" title={m.feedback || 'No comments'}>
-                            "{m.feedback || 'No feedback yet'}"
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <button onClick={() => handleDeleteMilestone(m.id)} className="text-rose-500 hover:text-rose-600 transition-colors">
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {milestones.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="text-center py-6 text-slate-450">No milestones configured for this project.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
-          </div>
-
-          <Card>
-            <Kanban />
-          </Card>
-        </div>
-      )}
 
       {/* 5. ERP FILE LOCKER */}
       {activeTab === 'files' && (
