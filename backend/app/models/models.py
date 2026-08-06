@@ -517,3 +517,192 @@ class Batch(Base):
     __tablename__ = "batches"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
+
+# --- Complete Project Lifecycle Models ---
+
+class ProjectProposal(Base):
+    __tablename__ = "project_proposals"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
+    title = Column(String(255), nullable=False)
+    domain = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=False)
+    problem_statement = Column(Text, nullable=False)
+    objectives = Column(Text, nullable=False)
+    existing_system = Column(Text, nullable=False)
+    proposed_system = Column(Text, nullable=False)
+    scope = Column(Text, nullable=False)
+    expected_outcome = Column(Text, nullable=False)
+    technologies_used = Column(Text, nullable=False)
+    programming_language = Column(String(100), nullable=False)
+    database = Column(String(100), nullable=False)
+    tools_used = Column(Text, nullable=False)
+    project_duration = Column(String(100), nullable=False)
+    team_members = Column(Text, nullable=False)
+    proposal_pdf_url = Column(String(255))
+    synopsis_url = Column(String(255))
+    literature_survey_url = Column(String(255))
+    initial_diagram_url = Column(String(255))
+    status = Column(Enum("pending", "approved", "rejected", "revision_required"), default="pending")
+    remarks = Column(Text)
+    deadline = Column(String(100))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    student = relationship("Student")
+    project = relationship("Project")
+
+class WeeklyProgress(Base):
+    __tablename__ = "weekly_progress"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    week_number = Column(Integer, nullable=False)
+    work_completed = Column(Text, nullable=False)
+    objectives_achieved = Column(Text, nullable=False)
+    modules_completed = Column(Text, nullable=False) # JSON or comma-separated
+    hours_worked = Column(Integer, default=0)
+    current_progress = Column(Integer, default=0) # Slider 0-100%
+    challenges_faced = Column(Text)
+    next_week_plan = Column(Text)
+    github_repo_link = Column(String(255))
+    live_demo_link = Column(String(255))
+    source_code_url = Column(String(255))
+    images_url = Column(Text) # Comma-separated or JSON list
+    videos_url = Column(String(255))
+    documents_url = Column(String(255))
+    screenshots_url = Column(Text)
+    database_backup_url = Column(String(255))
+    status = Column(Enum("pending", "submitted", "reviewed", "revision_required", "approved"), default="pending")
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class WeeklyFeedback(Base):
+    __tablename__ = "weekly_feedbacks"
+    id = Column(Integer, primary_key=True, index=True)
+    weekly_progress_id = Column(Integer, ForeignKey("weekly_progress.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Enum("approved", "rejected", "revision_required"), default="approved")
+    comments = Column(Text)
+    weekly_marks = Column(Integer)
+    reviewed_at = Column(DateTime, server_default=func.now())
+
+    weekly_progress = relationship("WeeklyProgress")
+
+class ProjectMilestone(Base):
+    __tablename__ = "project_milestones"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    status = Column(Enum("pending", "completed"), default="pending")
+    progress_percentage = Column(Integer, default=0)
+    target_date = Column(String(100))
+
+    project = relationship("Project")
+
+class MeetingSchedule(Base):
+    __tablename__ = "meeting_schedules"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    guide_id = Column(Integer, ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
+    meeting_date = Column(String(100), nullable=False)
+    time = Column(String(100), nullable=False)
+    discussion = Column(Text)
+    action_items = Column(Text)
+    attendance = Column(Text)
+    status = Column(Enum("requested", "approved", "completed", "cancelled"), default="requested")
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+    student = relationship("Student")
+    guide = relationship("Teacher")
+
+class ProjectReport(Base):
+    __tablename__ = "project_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    final_report_url = Column(String(255))
+    research_paper_url = Column(String(255))
+    ppt_url = Column(String(255))
+    source_code_zip_url = Column(String(255))
+    poster_url = Column(String(255))
+    demo_video_url = Column(String(255))
+    github_repository = Column(String(255))
+    deployment_link = Column(String(255))
+    user_manual_url = Column(String(255))
+    database_backup_url = Column(String(255))
+    submission_date = Column(DateTime, server_default=func.now())
+    version = Column(Integer, default=1)
+
+    project = relationship("Project")
+
+class ResearchPapers(Base):
+    __tablename__ = "research_papers_lifecycle"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    abstract = Column(Text, nullable=False)
+    keywords = Column(String(255), nullable=False)
+    conference = Column(String(255))
+    journal = Column(String(255))
+    paper_url = Column(String(255), nullable=False)
+    status = Column(Enum("uploaded", "pending_review", "approved"), default="uploaded")
+    review_feedback = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+
+    student = relationship("Student")
+    project = relationship("Project")
+
+class FinalEvaluation(Base):
+    __tablename__ = "final_evaluations"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    weekly_perf_marks = Column(Float, nullable=False)
+    proj_impl_marks = Column(Float, nullable=False)
+    final_report_marks = Column(Float, nullable=False)
+    research_paper_marks = Column(Float, nullable=False)
+    viva_marks = Column(Float, nullable=False)
+    total_marks = Column(Float, nullable=False)
+    grade = Column(String(10), nullable=False)
+    strengths = Column(Text)
+    weaknesses = Column(Text)
+    suggestions = Column(Text)
+    future_scope = Column(Text)
+    recommendation = Column(Text)
+    guide_approval = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class WeeklyMarks(Base):
+    __tablename__ = "weekly_marks"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    week_number = Column(Integer, nullable=False)
+    marks = Column(Integer, nullable=False)
+    max_marks = Column(Integer, default=10)
+
+    project = relationship("Project")
+
+class GuideRemarks(Base):
+    __tablename__ = "guide_remarks"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    remarks = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class ProjectStatus(Base):
+    __tablename__ = "project_status"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String(50), nullable=False)
+    grade = Column(String(10))
+    total_marks = Column(Float)
+    guide_approved = Column(Boolean, default=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    project = relationship("Project")

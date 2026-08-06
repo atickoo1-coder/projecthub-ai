@@ -354,3 +354,83 @@ Highly motivated engineering student with expertise in modern technologies. Prov
             "delay": f"{delay} Days" if delay > 0 else "On Track",
             "recommendation": recommendation
         }
+
+    @staticmethod
+    def review_research_paper_ai(title: str, abstract: str, keywords: str, journal_or_conf: str) -> dict:
+        prompt = f"""
+        Perform a comprehensive academic review of a student's research paper draft.
+        Title: {title}
+        Abstract: {abstract}
+        Keywords: {keywords}
+        Target Journal/Conference: {journal_or_conf}
+
+        Analyze and evaluate:
+        1. "grammar" (Score out of 100)
+        2. "formatting" (Score out of 100)
+        3. "references_count" (Estimated references check score out of 100)
+        4. "citation_consistency" (Score out of 100)
+        5. "plagiarism_risk" (Score out of 100)
+        6. "missing_sections" (List of typical sections missing, e.g., Methodology, Results)
+        7. "suggestions" (Detailed suggestions list)
+
+        Return response strictly as a JSON object with these keys. Do not include markdown code block syntax.
+        """
+        default_mock = {
+            "grammar": 88,
+            "formatting": 85,
+            "references_count": 90,
+            "citation_consistency": 82,
+            "plagiarism_risk": 15,
+            "missing_sections": ["Future Enhancements", "Comparative Analysis Table"],
+            "suggestions": [
+                "Ensure citations conform strictly to IEEE or APA style guidelines.",
+                "Structure the methodology section to show a step-by-step logic flow.",
+                "Elaborate on database schema design limitations in the conclusion."
+            ]
+        }
+        res_text = call_gemini(prompt, json.dumps(default_mock))
+        try:
+            if "```" in res_text:
+                res_text = res_text.split("```")[1]
+                if res_text.startswith("json"):
+                    res_text = res_text[4:]
+            return json.loads(res_text.strip())
+        except Exception:
+            return default_mock
+
+    @staticmethod
+    def review_project_report_ai(title: str, objectives: str, methodology: str, results: str) -> dict:
+        prompt = f"""
+        Perform an AI review of the student's project report.
+        Project Title: {title}
+        Objectives: {objectives}
+        Methodology: {methodology}
+        Results: {results}
+
+        Evaluate:
+        1. "objectives_clarity" (Out of 100)
+        2. "methodology_depth" (Out of 100)
+        3. "results_validation" (Out of 100)
+        4. "future_scope_present" (Yes/No)
+        5. "missing_chapters" (List of missing report chapters)
+        6. "improvement_recommendations" (Text description of suggestions)
+
+        Return response strictly as a JSON object with these keys. Do not include markdown code block syntax.
+        """
+        default_mock = {
+            "objectives_clarity": 85,
+            "methodology_depth": 80,
+            "results_validation": 75,
+            "future_scope_present": "Yes",
+            "missing_chapters": ["Appendices", "User Manual / Deployment Guide"],
+            "improvement_recommendations": "Add mathematical formulations for user matching matrices. Include detailed performance comparison charts in the results chapter."
+        }
+        res_text = call_gemini(prompt, json.dumps(default_mock))
+        try:
+            if "```" in res_text:
+                res_text = res_text.split("```")[1]
+                if res_text.startswith("json"):
+                    res_text = res_text[4:]
+            return json.loads(res_text.strip())
+        except Exception:
+            return default_mock

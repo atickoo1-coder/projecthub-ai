@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { projectAPI, authAPI, aiAPI, meetingAPI } from '../services/api';
+import { projectAPI, authAPI, aiAPI, meetingAPI, lifecycleAPI } from '../services/api';
+import ProjectProposal from './ProjectProposal';
 import Card from '../components/Card';
 import Kanban from '../components/Kanban';
 import Calendar from '../components/Calendar';
@@ -80,6 +81,74 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Project Lifecycle states
+  const [lifecycleProposal, setLifecycleProposal] = useState(null);
+  const [weeklyLogs, setWeeklyLogs] = useState([]);
+  const [finalSubmission, setFinalSubmission] = useState(null);
+  const [researchPaper, setResearchPaper] = useState(null);
+  const [finalEvaluation, setFinalEvaluation] = useState(null);
+  const [meetingsLifecycle, setMeetingsLifecycle] = useState([]);
+  const [showProposalView, setShowProposalView] = useState(false);
+  const [lifecycleSubTab, setLifecycleSubTab] = useState('proposal');
+  
+  // Lifecycle Sub-Form States
+  const [weeklyLogForm, setWeeklyLogForm] = useState({
+    week_number: '',
+    work_completed: '',
+    objectives_achieved: '',
+    modules_completed: '',
+    hours_worked: '',
+    current_progress: 50,
+    challenges_faced: '',
+    next_week_plan: '',
+    github_repo_link: '',
+    live_demo_link: ''
+  });
+  
+  const [weeklyLogFiles, setWeeklyLogFiles] = useState({
+    source_code: null,
+    video_file: null,
+    doc_file: null,
+    db_backup: null,
+    image_files: [],
+    screenshot_files: []
+  });
+
+  const [lifecycleMeetForm, setLifecycleMeetForm] = useState({
+    meeting_date: '',
+    time: '',
+    discussion: ''
+  });
+
+  const [lifecyclePaperFormState, setLifecyclePaperFormState] = useState({
+    title: '',
+    abstract: '',
+    keywords: '',
+    conference: '',
+    journal: ''
+  });
+  const [lifecyclePaperFile, setLifecyclePaperFile] = useState(null);
+
+  const [lifecycleFinalFormState, setLifecycleFinalFormState] = useState({
+    github_repository: '',
+    deployment_link: ''
+  });
+  const [lifecycleFinalFiles, setLifecycleFinalFiles] = useState({
+    final_report: null,
+    research_paper: null,
+    ppt_file: null,
+    source_code_zip: null,
+    poster_file: null,
+    demo_video: null,
+    user_manual: null,
+    db_backup: null
+  });
+
+  // AI & Plagiarism diagnostic states
+  const [aiPaperReviewResult, setAiPaperReviewResult] = useState(null);
+  const [aiReportReviewResult, setAiReportReviewResult] = useState(null);
+  const [plagReportResult, setPlagReportResult] = useState(null);
 
   // Profile Edit State
   const [profileForm, setProfileForm] = useState({
@@ -212,6 +281,70 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
             console.error("Error loading GitHub stats:", e);
           }
           setLiveUrlForm(currentProj.live_url || '');
+          
+          // Fetch final evaluation scorecard
+          try {
+            const evalRes = await lifecycleAPI.getProjectFinalEvaluation(currentProj.id);
+            if (evalRes && evalRes.status !== 'pending_evaluation') {
+              setFinalEvaluation(evalRes);
+            } else {
+              setFinalEvaluation(null);
+            }
+          } catch (e) {
+            console.error("Error loading final evaluation:", e);
+          }
+        }
+
+        // Fetch lifecycle proposal
+        try {
+          const propRes = await lifecycleAPI.getMyProposal();
+          if (propRes && propRes.status !== 'none') {
+            setLifecycleProposal(propRes);
+          } else {
+            setLifecycleProposal(null);
+          }
+        } catch (e) {
+          console.error("Error loading lifecycle proposal:", e);
+        }
+
+        // Fetch weekly logs
+        try {
+          const logsRes = await lifecycleAPI.getMyWeeklyProgress();
+          setWeeklyLogs(logsRes);
+        } catch (e) {
+          console.error("Error loading weekly logs:", e);
+        }
+
+        // Fetch final submission
+        try {
+          const finalRes = await lifecycleAPI.getMyFinalSubmission();
+          if (finalRes && finalRes.status !== 'none') {
+            setFinalSubmission(finalRes);
+          } else {
+            setFinalSubmission(null);
+          }
+        } catch (e) {
+          console.error("Error loading final submission:", e);
+        }
+
+        // Fetch research paper lifecycle
+        try {
+          const paperRes = await lifecycleAPI.getMyResearchPaper();
+          if (paperRes && paperRes.status !== 'none') {
+            setResearchPaper(paperRes);
+          } else {
+            setResearchPaper(null);
+          }
+        } catch (e) {
+          console.error("Error loading research paper lifecycle:", e);
+        }
+
+        // Fetch meetings lifecycle
+        try {
+          const meetsRes = await lifecycleAPI.getMyMeetings();
+          setMeetingsLifecycle(meetsRes);
+        } catch (e) {
+          console.error("Error loading lifecycle meetings:", e);
         }
         
         // Fetch placement records
@@ -344,6 +477,189 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
       fetchData();
     } catch (err) {
       setError("Failed to log progress updates.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lifecycle Handlers
+  const handleLifecycleWeeklyLogSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = new FormData();
+      Object.keys(weeklyLogForm).forEach(key => {
+        data.append(key, weeklyLogForm[key]);
+      });
+      // Append files
+      Object.keys(weeklyLogFiles).forEach(key => {
+        if (key === 'image_files' || key === 'screenshot_files') {
+          weeklyLogFiles[key].forEach(f => {
+            data.append(key, f);
+          });
+        } else if (weeklyLogFiles[key]) {
+          data.append(key, weeklyLogFiles[key]);
+        }
+      });
+
+      await lifecycleAPI.submitWeeklyProgress(data);
+      setSuccess(`Weekly progress for Week ${weeklyLogForm.week_number} logged successfully!`);
+      // Reset form
+      setWeeklyLogForm({
+        week_number: '',
+        work_completed: '',
+        objectives_achieved: '',
+        modules_completed: '',
+        hours_worked: '',
+        current_progress: 50,
+        challenges_faced: '',
+        next_week_plan: '',
+        github_repo_link: '',
+        live_demo_link: ''
+      });
+      setWeeklyLogFiles({
+        source_code: null,
+        video_file: null,
+        doc_file: null,
+        db_backup: null,
+        image_files: [],
+        screenshot_files: []
+      });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Failed to submit weekly progress log.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLifecycleMeetingRequest = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = new FormData();
+      data.append('meeting_date', lifecycleMeetForm.meeting_date);
+      data.append('time', lifecycleMeetForm.time);
+      data.append('discussion', lifecycleMeetForm.discussion);
+      await lifecycleAPI.requestMeeting(data);
+      setSuccess("Meeting review request submitted to Guide!");
+      setLifecycleMeetForm({ meeting_date: '', time: '', discussion: '' });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Failed to request meeting.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLifecyclePaperUpload = async (e) => {
+    e.preventDefault();
+    if (!lifecyclePaperFile) {
+      setError("Please select a research paper file to upload.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = new FormData();
+      Object.keys(lifecyclePaperFormState).forEach(key => {
+        data.append(key, lifecyclePaperFormState[key]);
+      });
+      data.append('paper', lifecyclePaperFile);
+      await lifecycleAPI.uploadResearchPaper(data);
+      setSuccess("Research paper draft uploaded successfully for Guide review!");
+      setLifecyclePaperFormState({ title: '', abstract: '', keywords: '', conference: '', journal: '' });
+      setLifecyclePaperFile(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Failed to upload research paper.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLifecycleFinalSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = new FormData();
+      data.append('github_repository', lifecycleFinalFormState.github_repository);
+      data.append('deployment_link', lifecycleFinalFormState.deployment_link);
+      Object.keys(lifecycleFinalFiles).forEach(key => {
+        if (lifecycleFinalFiles[key]) {
+          data.append(key, lifecycleFinalFiles[key]);
+        }
+      });
+      await lifecycleAPI.submitFinalReport(data);
+      setSuccess("Final academic project deliverables submitted successfully!");
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Failed to submit final project report.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAIPaperDiagnostic = async () => {
+    if (!researchPaper) return;
+    setLoading(true);
+    try {
+      const data = new FormData();
+      data.append('title', researchPaper.title);
+      data.append('abstract', researchPaper.abstract);
+      data.append('keywords', researchPaper.keywords);
+      data.append('journal_or_conf', researchPaper.journal || researchPaper.conference || "Target Journal");
+      const res = await lifecycleAPI.reviewResearchPaperAI(data);
+      setAiPaperReviewResult(res);
+    } catch (err) {
+      console.error(err);
+      setError("AI research paper check failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAIReportDiagnostic = async () => {
+    if (!activeProject || !lifecycleProposal) return;
+    setLoading(true);
+    try {
+      const data = new FormData();
+      data.append('title', activeProject.title);
+      data.append('objectives', lifecycleProposal.objectives);
+      data.append('methodology', lifecycleProposal.proposed_system);
+      data.append('results', lifecycleProposal.expected_outcome);
+      const res = await lifecycleAPI.reviewProjectReportAI(data);
+      setAiReportReviewResult(res);
+    } catch (err) {
+      console.error(err);
+      setError("AI report diagnostics failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlagiarismScan = async () => {
+    if (!activeProject) return;
+    setLoading(true);
+    try {
+      const data = new FormData();
+      data.append('project_id', activeProject.id);
+      const res = await lifecycleAPI.runPlagiarismCheck(data);
+      setPlagReportResult(res);
+    } catch (err) {
+      console.error(err);
+      setError("Plagiarism scan failed.");
     } finally {
       setLoading(false);
     }
@@ -813,6 +1129,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
       <div className="border-b border-slate-200 dark:border-slate-800 overflow-x-auto flex space-x-1.5 pb-0.5 scrollbar-thin">
         {[
           { id: 'profile', label: 'Profile & Skills', icon: User },
+          { id: 'lifecycle', label: 'Project Lifecycle', icon: FileText },
           { id: 'overview', label: 'Overview', icon: Folder },
           { id: 'milestones', label: 'Milestones & Tasks', icon: CheckCircle },
           { id: 'files', label: 'File Locker', icon: UploadCloud },
@@ -844,6 +1161,838 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
       </div>
 
       {/* Tab panel sections */}
+
+      {/* 0. PROJECT LIFECYCLE WORKSPACE */}
+      {activeTab === 'lifecycle' && (
+        <div className="space-y-8 animate-fade-in text-slate-800 dark:text-slate-100">
+          {showProposalView ? (
+            <ProjectProposal onBack={() => { setShowProposalView(false); fetchData(); }} />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              
+              {/* Lifecycle Sub-Navigation Sidebar */}
+              <div className="space-y-2">
+                <div className="bg-white dark:bg-slate-900 border p-4 rounded-2xl space-y-1">
+                  <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 px-3 mb-2">Lifecycle Stages</h3>
+                  {[
+                    { id: 'proposal', label: '1. Project Proposal', count: lifecycleProposal ? 1 : 0 },
+                    { id: 'weekly', label: '2. Weekly Progress Logs', count: weeklyLogs.length },
+                    { id: 'meetings', label: '3. Sync Meetings', count: meetingsLifecycle.length },
+                    { id: 'research_paper', label: '4. Research Paper Draft', count: researchPaper ? 1 : 0 },
+                    { id: 'ai_plagiarism', label: '5. AI & Plagiarism Diagnostic', count: plagReportResult ? 1 : 0 },
+                    { id: 'final_submission', label: '6. Final Deliverables', count: finalSubmission ? 1 : 0 },
+                    { id: 'final_grade', label: '7. Academic Scorecard', count: finalEvaluation ? 1 : 0 }
+                  ].map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setLifecycleSubTab(sub.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                        lifecycleSubTab === sub.id
+                          ? 'bg-sky-500/10 text-sky-500 font-extrabold'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-500 hover:text-slate-850 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <span>{sub.label}</span>
+                      {sub.count > 0 && (
+                        <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[9px] font-mono text-slate-500">
+                          {sub.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Progress helper card */}
+                <div className="bg-gradient-to-r from-sky-500/5 to-indigo-500/5 border p-4 rounded-2xl text-xs space-y-3">
+                  <h4 className="font-bold">Lifecycle Progression</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span>Stage Checklist</span>
+                      <span className="font-bold">
+                        {((lifecycleProposal ? 1 : 0) + (weeklyLogs.length > 0 ? 1 : 0) + (meetingsLifecycle.length > 0 ? 1 : 0) + (researchPaper ? 1 : 0) + (finalSubmission ? 1 : 0) + (finalEvaluation ? 1 : 0))} / 6 Completed
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-850 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-sky-500 h-full transition-all duration-500" 
+                        style={{ width: `${(((lifecycleProposal ? 1 : 0) + (weeklyLogs.length > 0 ? 1 : 0) + (meetingsLifecycle.length > 0 ? 1 : 0) + (researchPaper ? 1 : 0) + (finalSubmission ? 1 : 0) + (finalEvaluation ? 1 : 0)) / 6) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lifecycle Stage Sub-Workspace */}
+              <div className="lg:col-span-3 space-y-6">
+                
+                {/* 1. PROJECT PROPOSAL SECTION */}
+                {lifecycleSubTab === 'proposal' && (
+                  <Card title="Academic Project Proposal" subtitle="Establish project title, objectives, and domain categories.">
+                    {lifecycleProposal ? (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start border-b pb-4">
+                          <div>
+                            <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 border rounded-full ${
+                              lifecycleProposal.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              lifecycleProposal.status === 'revision_required' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                              lifecycleProposal.status === 'rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                              'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                            }`}>
+                              Proposal Status: {lifecycleProposal.status.replace('_', ' ').toUpperCase()}
+                            </span>
+                            <h4 className="font-extrabold text-base text-slate-855 dark:text-slate-100 mt-3">{lifecycleProposal.title}</h4>
+                            <p className="text-xs text-slate-400 mt-1">Domain: {lifecycleProposal.domain} • Category: {lifecycleProposal.category}</p>
+                          </div>
+                        </div>
+
+                        {lifecycleProposal.remarks && (
+                          <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl text-xs">
+                            <span className="font-bold text-amber-600 dark:text-amber-500 block mb-0.5">Guide Feedback Remarks:</span>
+                            <p className="italic text-slate-600 dark:text-slate-300">"{lifecycleProposal.remarks}"</p>
+                            {lifecycleProposal.deadline && <span className="block mt-2 font-bold">Revision Deadline: {lifecycleProposal.deadline}</span>}
+                          </div>
+                        )}
+
+                        <div className="flex gap-4">
+                          <button
+                            onClick={() => setShowProposalView(true)}
+                            className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold flex items-center transition-all"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View / Edit Full Proposal
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
+                        <FileText className="w-10 h-10 text-slate-400 mx-auto" />
+                        <div>
+                          <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wide">No Proposal Submitted</h4>
+                          <p className="text-xs text-slate-500 mt-1">Before starting weekly worklogs, you must submit a project proposal for guide appraisal.</p>
+                        </div>
+                        <button
+                          onClick={() => setShowProposalView(true)}
+                          className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all inline-block"
+                        >
+                          Create Project Proposal
+                        </button>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
+                {/* 2. WEEKLY PROGRESS LOGS SECTION */}
+                {lifecycleSubTab === 'weekly' && (
+                  <div className="space-y-6">
+                    {/* Proposal Locked Protection */}
+                    {(!lifecycleProposal || lifecycleProposal.status !== 'approved') ? (
+                      <div className="text-center py-12 bg-amber-500/5 border border-amber-500/10 rounded-3xl space-y-4 p-8">
+                        <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+                        <h3 className="font-bold text-sm text-amber-600">Access Locked: Weekly Progress Update</h3>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          You cannot start weekly progress update logs or track milestones until your advisor guide reviews and **APPROVES** your initial Project Proposal.
+                        </p>
+                        <button onClick={() => setLifecycleSubTab('proposal')} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all">
+                          Check Proposal Status
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Add weekly update log form */}
+                        <Card title="Log Weekly Work Updates" subtitle="Track progress percentages, tasks completed, and upload source code backups.">
+                          <form onSubmit={handleLifecycleWeeklyLogSubmit} className="space-y-4 text-xs">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Week Number *</label>
+                                <input required type="number" min={1} max={16} placeholder="e.g. 1" value={weeklyLogForm.week_number} onChange={e => setWeeklyLogForm({...weeklyLogForm, week_number: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Hours Worked *</label>
+                                <input required type="number" min={0} placeholder="e.g. 15" value={weeklyLogForm.hours_worked} onChange={e => setWeeklyLogForm({...weeklyLogForm, hours_worked: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+
+                              <div className="md:col-span-2">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Current Project Progress ({weeklyLogForm.current_progress}%) *</label>
+                                <div className="flex items-center space-x-3 mt-1">
+                                  <input type="range" min={0} max={100} step={5} value={weeklyLogForm.current_progress} onChange={e => setWeeklyLogForm({...weeklyLogForm, current_progress: parseInt(e.target.value)})} className="flex-1 accent-sky-500" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Work Completed (Detailed description) *</label>
+                                <textarea required rows={3} placeholder="Explain specific details of logic built..." value={weeklyLogForm.work_completed} onChange={e => setWeeklyLogForm({...weeklyLogForm, work_completed: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Objectives Achieved *</label>
+                                <textarea required rows={3} placeholder="Which targets from proposal were addressed?" value={weeklyLogForm.objectives_achieved} onChange={e => setWeeklyLogForm({...weeklyLogForm, objectives_achieved: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Modules Completed *</label>
+                                <input required type="text" placeholder="e.g. Login system, Router validations" value={weeklyLogForm.modules_completed} onChange={e => setWeeklyLogForm({...weeklyLogForm, modules_completed: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Challenges Faced</label>
+                                <input type="text" placeholder="Explain compiler blockers or integration errors..." value={weeklyLogForm.challenges_faced} onChange={e => setWeeklyLogForm({...weeklyLogForm, challenges_faced: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="md:col-span-2">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Next Week's Work Plan *</label>
+                                <input required type="text" placeholder="What parts are planned for implementation next?" value={weeklyLogForm.next_week_plan} onChange={e => setWeeklyLogForm({...weeklyLogForm, next_week_plan: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">GitHub Repo Link</label>
+                                <input type="url" placeholder="https://github.com/..." value={weeklyLogForm.github_repo_link} onChange={e => setWeeklyLogForm({...weeklyLogForm, github_repo_link: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                            </div>
+
+                            <div className="border-t pt-3 mt-3">
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase mb-2">Upload Files & Deliverables</label>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px]">
+                                <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                  <span className="font-semibold truncate">Source Code ZIP</span>
+                                  <input type="file" accept=".zip,.rar,.tar" onChange={e => setWeeklyLogFiles({...weeklyLogFiles, source_code: e.target.files[0]})} className="mt-1 w-full" />
+                                </div>
+                                <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                  <span className="font-semibold truncate">Screenshots (Multi)</span>
+                                  <input type="file" multiple accept="image/*" onChange={e => setWeeklyLogFiles({...weeklyLogFiles, screenshot_files: Array.from(e.target.files)})} className="mt-1 w-full" />
+                                </div>
+                                <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                  <span className="font-semibold truncate">Document / Report</span>
+                                  <input type="file" accept=".pdf,.doc,.docx" onChange={e => setWeeklyLogFiles({...weeklyLogFiles, doc_file: e.target.files[0]})} className="mt-1 w-full" />
+                                </div>
+                                <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                  <span className="font-semibold truncate">Database Backup</span>
+                                  <input type="file" accept=".sql,.db,.sqlite" onChange={e => setWeeklyLogFiles({...weeklyLogFiles, db_backup: e.target.files[0]})} className="mt-1 w-full" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                              <button
+                                type="submit"
+                                className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all"
+                              >
+                                Submit Log Entry
+                              </button>
+                            </div>
+                          </form>
+                        </Card>
+
+                        {/* Weekly progression timeline listing */}
+                        <div className="space-y-4">
+                          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Weekly Progress Timeline</h3>
+                          
+                          {weeklyLogs.length === 0 ? (
+                            <div className="p-6 text-center border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                              No weekly progress log updates submitted yet.
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {weeklyLogs.map(log => (
+                                <div key={log.id} className="bg-white dark:bg-slate-900 border rounded-2xl p-5 space-y-3 relative overflow-hidden transition-all hover:shadow-md">
+                                  {/* Week label */}
+                                  <div className="flex justify-between items-center border-b pb-2">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="font-extrabold text-sm text-sky-500">Week {log.week_number}</span>
+                                      <span className="text-[10px] text-slate-400">({log.hours_worked} hours worked)</span>
+                                    </div>
+                                    <span className={`text-[9px] uppercase font-bold px-2 py-0.5 border rounded-full ${
+                                      log.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                      log.status === 'revision_required' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                      log.status === 'submitted' ? 'bg-sky-500/10 text-sky-500 border-sky-500/20' :
+                                      'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                    }`}>
+                                      {log.status}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                    <div>
+                                      <span className="font-bold text-slate-400 text-[10px] uppercase block mb-0.5">Tasks Completed</span>
+                                      <p className="text-slate-700 dark:text-slate-300">{log.work_completed}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-bold text-slate-400 text-[10px] uppercase block mb-0.5">Modules Completed</span>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {log.modules_completed.map((m, i) => (
+                                          <span key={i} className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px]">{m}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Slider display */}
+                                  <div className="space-y-1 pt-2">
+                                    <div className="flex justify-between items-center text-[10px]">
+                                      <span>Cumulative Project Progress</span>
+                                      <span className="font-bold">{log.current_progress}%</span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                      <div className="bg-sky-500 h-full" style={{ width: `${log.current_progress}%` }}></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Links */}
+                                  {(log.github_repo_link || log.live_demo_link) && (
+                                    <div className="flex space-x-3 pt-2 text-[10px]">
+                                      {log.github_repo_link && (
+                                        <a href={log.github_repo_link} target="_blank" rel="noreferrer" className="flex items-center text-sky-500 font-bold hover:underline">
+                                          <Github size={12} className="mr-1" /> Repo Link
+                                        </a>
+                                      )}
+                                      {log.live_demo_link && (
+                                        <a href={log.live_demo_link} target="_blank" rel="noreferrer" className="flex items-center text-emerald-500 font-bold hover:underline">
+                                          <Link2 size={12} className="mr-1" /> Live Demo
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Guide feedback section */}
+                                  {log.feedback && (
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-850/50 rounded-xl text-xs mt-3 border border-slate-100 dark:border-slate-800 space-y-1">
+                                      <div className="flex justify-between font-bold">
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">Guide Assessment Comments</span>
+                                        <span className="text-sky-500">Marks: {log.feedback.weekly_marks}/10</span>
+                                      </div>
+                                      <p className="italic text-slate-600 dark:text-slate-350">"{log.feedback.comments || 'No remarks recorded.'}"</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. WEEKLY MEETING SCHEDULER SECTION */}
+                {lifecycleSubTab === 'meetings' && (
+                  <div className="space-y-6">
+                    <Card title="Request Project Sync Sync" subtitle="Schedule weekly project evaluations or timeline reviews with your mentor.">
+                      <form onSubmit={handleLifecycleMeetingRequest} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Meeting Date *</label>
+                            <input required type="date" value={lifecycleMeetForm.meeting_date} onChange={e => setLifecycleMeetForm({...lifecycleMeetForm, meeting_date: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Preferred Time *</label>
+                            <input required type="time" value={lifecycleMeetForm.time} onChange={e => setLifecycleMeetForm({...lifecycleMeetForm, time: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Agenda / Discussion Topic *</label>
+                          <textarea required rows={3} placeholder="What components or blockers are you planning to showcase?" value={lifecycleMeetForm.discussion} onChange={e => setLifecycleMeetForm({...lifecycleMeetForm, discussion: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                        </div>
+
+                        <div className="flex justify-end">
+                          <button type="submit" className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all">
+                            Send Request
+                          </button>
+                        </div>
+                      </form>
+                    </Card>
+
+                    {/* Schedule listing */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Meeting Schedules</h3>
+                      {meetingsLifecycle.length === 0 ? (
+                        <div className="p-6 text-center border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                          No meetings logged or requested yet.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {meetingsLifecycle.map(m => (
+                            <div key={m.id} className="bg-white dark:bg-slate-900 border rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs">
+                              <div>
+                                <span className="font-bold block text-sm">{m.discussion}</span>
+                                <span className="block text-slate-500 mt-1">Date: {m.meeting_date} at {m.time}</span>
+                                {m.action_items && (
+                                  <span className="block mt-2 text-[11px] p-2 bg-slate-50 dark:bg-slate-850 rounded-lg italic">
+                                    **Action Items:** {m.action_items}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                  m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
+                                  m.status === 'approved' ? 'bg-indigo-500/10 text-indigo-500' :
+                                  m.status === 'requested' ? 'bg-sky-500/10 text-sky-500' :
+                                  'bg-rose-500/10 text-rose-500'
+                                }`}>
+                                  {m.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. RESEARCH PAPER DRAFT SECTION */}
+                {lifecycleSubTab === 'research_paper' && (
+                  <div className="grid grid-cols-1 gap-6">
+                    <Card title="Upload Research Paper Draft" subtitle="Submit your academic paper draft directly linked to this project scope.">
+                      <form onSubmit={handleLifecyclePaperUpload} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Paper Title *</label>
+                            <input required type="text" placeholder="e.g. Facial Recognition Attendance via Deep Networks" value={lifecyclePaperFormState.title} onChange={e => setLifecyclePaperFormState({...lifecyclePaperFormState, title: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Keywords *</label>
+                            <input required type="text" placeholder="e.g. CNN, Deep Learning, OpenCV" value={lifecyclePaperFormState.keywords} onChange={e => setLifecyclePaperFormState({...lifecyclePaperFormState, keywords: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Abstract Summary *</label>
+                          <textarea required rows={4} placeholder="Copy research paper abstract summary..." value={lifecyclePaperFormState.abstract} onChange={e => setLifecyclePaperFormState({...lifecyclePaperFormState, abstract: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Journal</label>
+                            <input type="text" placeholder="e.g. IEEE Access" value={lifecyclePaperFormState.journal} onChange={e => setLifecyclePaperFormState({...lifecyclePaperFormState, journal: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Conference</label>
+                            <input type="text" placeholder="e.g. ICML 2026" value={lifecyclePaperFormState.conference} onChange={e => setLifecyclePaperFormState({...lifecyclePaperFormState, conference: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                          </div>
+                        </div>
+
+                        <div className="p-3 border border-dashed rounded-xl bg-slate-50 dark:bg-slate-800 flex flex-col items-center justify-center text-center">
+                          <UploadCloud className="w-6 h-6 text-sky-500 mb-1" />
+                          <span className="font-bold text-[10px]">Select Paper Manuscript (PDF/DOCX) *</span>
+                          <input required type="file" accept=".pdf,.doc,.docx" onChange={e => setLifecyclePaperFile(e.target.files[0])} className="mt-1 text-[9px]" />
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                          <button type="submit" className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all">
+                            Submit Manuscript
+                          </button>
+                        </div>
+                      </form>
+                    </Card>
+
+                    {/* Paper status card */}
+                    {researchPaper && (
+                      <div className="bg-white dark:bg-slate-900 border p-5 rounded-2xl space-y-3">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-extrabold text-sm text-sky-500">Research Paper Manuscript</h4>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-bold ${
+                            researchPaper.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-sky-500/10 text-sky-500'
+                          }`}>{researchPaper.status}</span>
+                        </div>
+                        <h3 className="font-bold text-base mt-2">{researchPaper.title}</h3>
+                        <p className="text-xs text-slate-500 italic mt-1">Abstract: "{researchPaper.abstract}"</p>
+                        <p className="text-[10px] text-slate-400 mt-2">Keywords: {researchPaper.keywords} • Target: {researchPaper.journal || researchPaper.conference || "Unspecified"}</p>
+                        
+                        {researchPaper.paper_url && (
+                          <a href={`http://localhost:8000/${researchPaper.paper_url}`} target="_blank" rel="noreferrer" className="inline-block mt-3 text-xs text-sky-500 hover:underline">
+                            Download Uploaded Manuscript PDF
+                          </a>
+                        )}
+
+                        {researchPaper.review_feedback && (
+                          <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl text-xs border mt-3">
+                            <span className="font-bold text-slate-400 block mb-0.5">Guide Manuscript Review Comments:</span>
+                            <p className="italic">"{researchPaper.review_feedback}"</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 5. AI DIAGNOSTIC & PLAGIARISM CHECK SECTION */}
+                {lifecycleSubTab === 'ai_plagiarism' && (
+                  <div className="space-y-6">
+                    {/* Grid of review helpers */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* AI Paper diagnostic */}
+                      <div className="bg-white dark:bg-slate-900 border p-5 rounded-2xl space-y-3">
+                        <h4 className="font-extrabold text-sm text-indigo-500">AI Research Paper Advisor</h4>
+                        <p className="text-xs text-slate-500">Examines formatting styles, citation indexes, grammar profiles, and plag risks via Gemini API.</p>
+                        <button 
+                          onClick={handleAIPaperDiagnostic} 
+                          disabled={!researchPaper}
+                          className="w-full py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-xl text-xs font-bold transition-all"
+                        >
+                          {!researchPaper ? "Upload Paper Draft to Enable" : "Analyze Manuscript with AI"}
+                        </button>
+
+                        {aiPaperReviewResult && (
+                          <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl text-xs space-y-3 mt-3">
+                            <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                              <div className="border p-1.5 rounded-lg">
+                                <span className="block text-slate-400">Grammar</span>
+                                <span className="font-extrabold text-sm">{aiPaperReviewResult.grammar}/100</span>
+                              </div>
+                              <div className="border p-1.5 rounded-lg">
+                                <span className="block text-slate-400">Format</span>
+                                <span className="font-extrabold text-sm">{aiPaperReviewResult.formatting}/100</span>
+                              </div>
+                              <div className="border p-1.5 rounded-lg">
+                                <span className="block text-slate-400">Citations</span>
+                                <span className="font-extrabold text-sm">{aiPaperReviewResult.citation_consistency}/100</span>
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Missing Layout Chapters</span>
+                              <div className="flex flex-wrap gap-1">
+                                {aiPaperReviewResult.missing_sections.map((s, i) => (
+                                  <span key={i} className="bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-md text-[9px] font-semibold">{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-1">AI Improvement Suggestions</span>
+                              <ul className="list-disc list-inside space-y-1">
+                                {aiPaperReviewResult.suggestions.map((s, i) => (
+                                  <li key={i}>{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* AI Report reviewer */}
+                      <div className="bg-white dark:bg-slate-900 border p-5 rounded-2xl space-y-3">
+                        <h4 className="font-extrabold text-sm text-purple-500">AI Report Outline Auditor</h4>
+                        <p className="text-xs text-slate-500">Verifies methodology scopes, problem statement definitions, and expected outcomes summaries.</p>
+                        <button 
+                          onClick={handleAIReportDiagnostic} 
+                          disabled={!lifecycleProposal}
+                          className="w-full py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-xl text-xs font-bold transition-all"
+                        >
+                          {!lifecycleProposal ? "Submit Proposal to Enable" : "Analyze Report with AI"}
+                        </button>
+
+                        {aiReportReviewResult && (
+                          <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-xl text-xs space-y-3 mt-3">
+                            <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
+                              <div className="border p-1.5 rounded-lg">
+                                <span className="block text-slate-400">Objectives Clarity</span>
+                                <span className="font-extrabold text-sm">{aiReportReviewResult.objectives_clarity}/100</span>
+                              </div>
+                              <div className="border p-1.5 rounded-lg">
+                                <span className="block text-slate-400">Methodology Depth</span>
+                                <span className="font-extrabold text-sm">{aiReportReviewResult.methodology_depth}/100</span>
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Missing Outline Chapters</span>
+                              <div className="flex flex-wrap gap-1">
+                                {aiReportReviewResult.missing_chapters.map((c, i) => (
+                                  <span key={i} className="bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-md text-[9px] font-semibold">{c}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-0.5">Recommendations</span>
+                              <p className="italic">"{aiReportReviewResult.improvement_recommendations}"</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
+                    {/* Plagiarism check card */}
+                    <div className="bg-white dark:bg-slate-900 border p-5 rounded-2xl space-y-4">
+                      <h4 className="font-extrabold text-sm text-emerald-500">Plagiarism Scan and AI Content Checker</h4>
+                      <p className="text-xs text-slate-500">Verifies manuscript originality by scanning matched sources, AI generated structures, and copying risk levels.</p>
+                      
+                      <button
+                        onClick={handlePlagiarismScan}
+                        disabled={!activeProject}
+                        className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 text-white rounded-xl text-xs font-bold transition-all"
+                      >
+                        Run Originality Scanner
+                      </button>
+
+                      {plagReportResult && (
+                        <div className="border-t pt-4 space-y-4 text-xs">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div className="p-3 border rounded-xl">
+                              <span className="block text-slate-400 text-[10px] uppercase">Similarity Index</span>
+                              <span className={`font-extrabold text-base ${plagReportResult.similarity_percentage > 20 ? "text-rose-500" : "text-emerald-500"}`}>
+                                {plagReportResult.similarity_percentage}%
+                              </span>
+                            </div>
+                            <div className="p-3 border rounded-xl">
+                              <span className="block text-slate-400 text-[10px] uppercase">AI Content</span>
+                              <span className="font-extrabold text-base">{plagReportResult.ai_content_percentage}%</span>
+                            </div>
+                            <div className="p-3 border rounded-xl">
+                              <span className="block text-slate-400 text-[10px] uppercase">Risk Level</span>
+                              <span className="font-extrabold text-base capitalize">{plagReportResult.risk_level}</span>
+                            </div>
+                            <div className="p-3 border rounded-xl">
+                              <span className="block text-slate-400 text-[10px] uppercase">Review Status</span>
+                              <span className="font-extrabold text-base capitalize">{plagReportResult.status}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Top Matched Sources</span>
+                            <div className="space-y-1 text-[11px]">
+                              {JSON.parse(plagReportResult.sources_json).map((s, idx) => (
+                                <div key={idx} className="flex justify-between p-2 bg-slate-50 dark:bg-slate-850 rounded-lg">
+                                  <span>{s.source}</span>
+                                  <span className="font-bold text-rose-500">{s.similarity}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Copied / Overlapping Paragraphs</span>
+                            <div className="space-y-2">
+                              {JSON.parse(plagReportResult.matched_paragraphs_json).map((p, idx) => (
+                                <p key={idx} className="p-2 border-l-4 border-rose-500 bg-rose-500/5 text-slate-600 dark:text-slate-350 italic">
+                                  "{p}"
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. FINAL DELIVERABLES SUBMISSION SECTION */}
+                {lifecycleSubTab === 'final_submission' && (
+                  <div className="space-y-6">
+                    {/* Locking protection if weekly progress logs not done */}
+                    {(weeklyLogs.length === 0 || milestones.filter(m => m.status === 'pending' && m.name !== 'Documentation' && m.name !== 'Deployment' && m.name !== 'Final Submission').length > 0) ? (
+                      <div className="text-center py-12 bg-amber-500/5 border border-amber-500/10 rounded-3xl p-8 space-y-4">
+                        <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+                        <h3 className="font-bold text-sm text-amber-600">Access Locked: Final Submission Workspace</h3>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          You must log all weekly progress reports and satisfy academic milestones (Requirements, Design, and Implementation) before submitting final project deliverables.
+                        </p>
+                        <button onClick={() => setLifecycleSubTab('weekly')} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all">
+                          Log Weekly Logs
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Card title="Submit Final Deliverables" subtitle="Upload project reports, PPTs, code archives, manuals, and database backups.">
+                          <form onSubmit={handleLifecycleFinalSubmit} className="space-y-4 text-xs">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">GitHub Code Repository *</label>
+                                <input required type="url" placeholder="https://github.com/..." value={lifecycleFinalFormState.github_repository} onChange={e => setLifecycleFinalFormState({...lifecycleFinalFormState, github_repository: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Production Deployment Link *</label>
+                                <input required type="url" placeholder="https://..." value={lifecycleFinalFormState.deployment_link} onChange={e => setLifecycleFinalFormState({...lifecycleFinalFormState, deployment_link: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px]">
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Final Report (PDF/DOCX) *</span>
+                                <input type="file" accept=".pdf,.doc,.docx" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, final_report: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Research Paper *</span>
+                                <input type="file" accept=".pdf,.doc,.docx" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, research_paper: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Presentation PPT *</span>
+                                <input type="file" accept=".ppt,.pptx,.pdf" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, ppt_file: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Full Code ZIP *</span>
+                                <input type="file" accept=".zip,.rar" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, source_code_zip: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Project Poster PDF</span>
+                                <input type="file" accept=".pdf,image/*" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, poster_file: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Demo Video File</span>
+                                <input type="file" accept="video/*" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, demo_video: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">User Manual PDF</span>
+                                <input type="file" accept=".pdf" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, user_manual: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                              <div className="border p-2 rounded-xl flex flex-col justify-between">
+                                <span className="font-semibold truncate">Database Schema</span>
+                                <input type="file" accept=".sql,.db" onChange={e => setLifecycleFinalFiles({...lifecycleFinalFiles, db_backup: e.target.files[0]})} className="mt-1 w-full" />
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                              <button type="submit" className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all">
+                                Submit Deliverables
+                              </button>
+                            </div>
+                          </form>
+                        </Card>
+
+                        {/* Submission status and download links */}
+                        {finalSubmission && (
+                          <div className="bg-white dark:bg-slate-900 border p-5 rounded-2xl space-y-3 text-xs">
+                            <div className="flex justify-between items-center">
+                              <h4 className="font-extrabold text-sm text-sky-500">Deliverables Version logs</h4>
+                              <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded text-[9px] font-bold uppercase">
+                                Version {finalSubmission.version} Submitted
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">Logged on {finalSubmission.submission_date}</p>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-3">
+                              {finalSubmission.final_report_url && (
+                                <a href={`http://localhost:8000/${finalSubmission.final_report_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 block text-center truncate">
+                                  Download Final Report
+                                </a>
+                              )}
+                              {finalSubmission.research_paper_url && (
+                                <a href={`http://localhost:8000/${finalSubmission.research_paper_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 block text-center truncate">
+                                  Download Research Paper
+                                </a>
+                              )}
+                              {finalSubmission.ppt_url && (
+                                <a href={`http://localhost:8000/${finalSubmission.ppt_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 block text-center truncate">
+                                  Download PPT Slides
+                                </a>
+                              )}
+                              {finalSubmission.source_code_zip_url && (
+                                <a href={`http://localhost:8000/${finalSubmission.source_code_zip_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 block text-center truncate">
+                                  Download Code ZIP
+                                </a>
+                              )}
+                              {finalSubmission.user_manual_url && (
+                                <a href={`http://localhost:8000/${finalSubmission.user_manual_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 block text-center truncate">
+                                  Download User Manual
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* 7. ACADEMIC SCORECARD SECTION */}
+                {lifecycleSubTab === 'final_grade' && (
+                  <div className="space-y-6">
+                    {!finalEvaluation ? (
+                      <div className="p-8 text-center border border-dashed rounded-3xl text-xs text-slate-500 italic">
+                        Final marks and grade scorecard are pending advisor guides review.
+                      </div>
+                    ) : (
+                      <div className="bg-white dark:bg-slate-900 border rounded-3xl p-6 space-y-6">
+                        <div className="flex justify-between items-center border-b pb-4">
+                          <div>
+                            <h2 className="text-lg font-bold">Academic Assessment Scorecard</h2>
+                            <p className="text-xs text-slate-450 mt-1">Weighted final grading breakdown approved by Mentor HOD.</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="block text-[10px] text-slate-450 uppercase font-bold">Overall Grade</span>
+                            <span className="text-3xl font-black text-sky-500">{finalEvaluation.grade}</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                          {/* Marks Table */}
+                          <div className="space-y-3">
+                            <span className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider block">Marks Breakdown</span>
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b text-slate-400 font-bold uppercase text-[9px]">
+                                  <th className="py-2">Evaluation Criteria</th>
+                                  <th className="py-2 text-right">Marks Awarded</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                                <tr>
+                                  <td className="py-2">Weekly Performance (30%)</td>
+                                  <td className="py-2 text-right font-bold">{finalEvaluation.weekly_perf_marks} / 30</td>
+                                </tr>
+                                <tr>
+                                  <td className="py-2">Project Implementation (25%)</td>
+                                  <td className="py-2 text-right font-bold">{finalEvaluation.proj_impl_marks} / 25</td>
+                                </tr>
+                                <tr>
+                                  <td className="py-2">Final Report PDF (20%)</td>
+                                  <td className="py-2 text-right font-bold">{finalEvaluation.final_report_marks} / 20</td>
+                                </tr>
+                                <tr>
+                                  <td className="py-2">Research Paper (15%)</td>
+                                  <td className="py-2 text-right font-bold">{finalEvaluation.research_paper_marks} / 15</td>
+                                </tr>
+                                <tr>
+                                  <td className="py-2">Viva Presentation (10%)</td>
+                                  <td className="py-2 text-right font-bold">{finalEvaluation.viva_marks} / 10</td>
+                                </tr>
+                                <tr className="font-extrabold text-sm border-t-2">
+                                  <td className="py-3 text-sky-500">Total Marks Score</td>
+                                  <td className="py-3 text-right text-sky-500">{finalEvaluation.total_marks} / 100</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Advisor Remarks */}
+                          <div className="space-y-3 bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border">
+                            <span className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider block">Advisor Guide Evaluation Remarks</span>
+                            
+                            <div className="space-y-3 text-xs">
+                              {finalEvaluation.strengths && (
+                                <div>
+                                  <span className="font-bold text-slate-400 block text-[9px] uppercase">Core Strengths:</span>
+                                  <p className="text-slate-700 dark:text-slate-350">{finalEvaluation.strengths}</p>
+                                </div>
+                              )}
+                              {finalEvaluation.weaknesses && (
+                                <div>
+                                  <span className="font-bold text-slate-400 block text-[9px] uppercase">Areas of Improvement:</span>
+                                  <p className="text-slate-700 dark:text-slate-350">{finalEvaluation.weaknesses}</p>
+                                </div>
+                              )}
+                              {finalEvaluation.future_scope && (
+                                <div>
+                                  <span className="font-bold text-slate-400 block text-[9px] uppercase">Suggested Future Scope:</span>
+                                  <p className="text-slate-700 dark:text-slate-350">{finalEvaluation.future_scope}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1. OVERVIEW DASHBOARD */}
       {activeTab === 'overview' && (

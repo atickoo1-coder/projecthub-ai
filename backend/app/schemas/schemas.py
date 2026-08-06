@@ -632,3 +632,236 @@ class AnalyticsOut(AnalyticsBase):
     updated_at: datetime
     class Config:
         from_attributes = True
+
+# --- Complete Project Lifecycle Schemas ---
+
+class ProjectProposalBase(BaseModel):
+    title: str
+    domain: str
+    category: str
+    problem_statement: str
+    objectives: str
+    existing_system: str
+    proposed_system: str
+    scope: str
+    expected_outcome: str
+    technologies_used: str
+    programming_language: str
+    database: str
+    tools_used: str
+    project_duration: str
+    team_members: str
+
+class ProjectProposalCreate(ProjectProposalBase):
+    proposal_pdf_url: Optional[str] = None
+    synopsis_url: Optional[str] = None
+    literature_survey_url: Optional[str] = None
+    initial_diagram_url: Optional[str] = None
+
+class ProjectProposalOut(ProjectProposalBase):
+    id: int
+    student_id: int
+    project_id: Optional[int] = None
+    proposal_pdf_url: Optional[str] = None
+    synopsis_url: Optional[str] = None
+    literature_survey_url: Optional[str] = None
+    initial_diagram_url: Optional[str] = None
+    status: str
+    remarks: Optional[str] = None
+    deadline: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    class Config:
+        from_attributes = True
+
+class WeeklyProgressBase(BaseModel):
+    week_number: int
+    work_completed: str
+    objectives_achieved: str
+    modules_completed: str
+    hours_worked: int
+    current_progress: int
+    challenges_faced: str
+    next_week_plan: str
+    github_repo_link: Optional[str] = None
+    live_demo_link: Optional[str] = None
+
+class WeeklyProgressCreate(WeeklyProgressBase):
+    source_code_url: Optional[str] = None
+    images_url: Optional[str] = None
+    videos_url: Optional[str] = None
+    documents_url: Optional[str] = None
+    screenshots_url: Optional[str] = None
+    database_backup_url: Optional[str] = None
+
+class WeeklyProgressOut(WeeklyProgressBase):
+    id: int
+    project_id: int
+    source_code_url: Optional[str] = None
+    images_url: Optional[str] = None
+    videos_url: Optional[str] = None
+    documents_url: Optional[str] = None
+    screenshots_url: Optional[str] = None
+    database_backup_url: Optional[str] = None
+    status: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class WeeklyFeedbackBase(BaseModel):
+    weekly_progress_id: int
+    status: str
+    comments: Optional[str] = None
+    weekly_marks: Optional[int] = None
+
+class WeeklyFeedbackCreate(WeeklyFeedbackBase):
+    pass
+
+class WeeklyFeedbackOut(WeeklyFeedbackBase):
+    id: int
+    reviewed_at: datetime
+    class Config:
+        from_attributes = True
+
+class ProjectMilestoneBase(BaseModel):
+    name: str
+    status: str
+    progress_percentage: int
+    target_date: Optional[str] = None
+
+class ProjectMilestoneOut(ProjectMilestoneBase):
+    id: int
+    project_id: int
+    class Config:
+        from_attributes = True
+
+class MeetingScheduleBase(BaseModel):
+    meeting_date: str
+    time: str
+    discussion: Optional[str] = None
+    action_items: Optional[str] = None
+    attendance: Optional[str] = None
+
+class MeetingScheduleCreate(MeetingScheduleBase):
+    student_id: int
+    guide_id: int
+
+class MeetingScheduleOut(MeetingScheduleBase):
+    id: int
+    project_id: int
+    student_id: int
+    guide_id: int
+    status: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class ProjectReportBase(BaseModel):
+    github_repository: Optional[str] = None
+    deployment_link: Optional[str] = None
+
+class ProjectReportCreate(ProjectReportBase):
+    final_report_url: Optional[str] = None
+    research_paper_url: Optional[str] = None
+    ppt_url: Optional[str] = None
+    source_code_zip_url: Optional[str] = None
+    poster_url: Optional[str] = None
+    demo_video_url: Optional[str] = None
+    user_manual_url: Optional[str] = None
+    database_backup_url: Optional[str] = None
+
+class ProjectReportOut(ProjectReportBase):
+    id: int
+    project_id: int
+    final_report_url: Optional[str] = None
+    research_paper_url: Optional[str] = None
+    ppt_url: Optional[str] = None
+    source_code_zip_url: Optional[str] = None
+    poster_url: Optional[str] = None
+    demo_video_url: Optional[str] = None
+    user_manual_url: Optional[str] = None
+    database_backup_url: Optional[str] = None
+    submission_date: datetime
+    version: int
+    class Config:
+        from_attributes = True
+
+class ResearchPapersBase(BaseModel):
+    title: str
+    abstract: str
+    keywords: str
+    conference: Optional[str] = None
+    journal: Optional[str] = None
+
+class ResearchPapersCreate(ResearchPapersBase):
+    paper_url: str
+
+class ResearchPapersOut(ResearchPapersBase):
+    id: int
+    student_id: int
+    project_id: int
+    paper_url: str
+    status: str
+    review_feedback: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class FinalEvaluationBase(BaseModel):
+    weekly_perf_marks: float
+    proj_impl_marks: float
+    final_report_marks: float
+    research_paper_marks: float
+    viva_marks: float
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
+    suggestions: Optional[str] = None
+    future_scope: Optional[str] = None
+    recommendation: Optional[str] = None
+
+class FinalEvaluationCreate(FinalEvaluationBase):
+    pass
+
+class FinalEvaluationOut(FinalEvaluationBase):
+    id: int
+    project_id: int
+    total_marks: float
+    grade: str
+    guide_approval: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class WeeklyMarksBase(BaseModel):
+    week_number: int
+    marks: int
+    max_marks: Optional[int] = 10
+
+class WeeklyMarksOut(WeeklyMarksBase):
+    id: int
+    project_id: int
+    class Config:
+        from_attributes = True
+
+class GuideRemarksBase(BaseModel):
+    remarks: str
+
+class GuideRemarksOut(GuideRemarksBase):
+    id: int
+    project_id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class ProjectStatusBase(BaseModel):
+    status: str
+    grade: Optional[str] = None
+    total_marks: Optional[float] = None
+    guide_approved: Optional[bool] = False
+
+class ProjectStatusOut(ProjectStatusBase):
+    id: int
+    project_id: int
+    updated_at: datetime
+    class Config:
+        from_attributes = True

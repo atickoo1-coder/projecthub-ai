@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { teacherAPI, meetingAPI, aiAPI, chatAPI } from '../services/api';
+import { teacherAPI, meetingAPI, aiAPI, chatAPI, lifecycleAPI } from '../services/api';
 import Card from '../components/Card';
 import { 
   Users, 
@@ -87,6 +87,41 @@ const TeacherDashboard = () => {
     upcoming_meetings: 0,
     average_progress: 0
   });
+
+  // Project Lifecycle Reviewer States
+  const [lifecycleProposals, setLifecycleProposals] = useState([]);
+  const [selectedProposal, setSelectedProposal] = useState(null);
+  const [proposalRemarks, setProposalRemarks] = useState('');
+  const [proposalDeadline, setProposalDeadline] = useState('');
+
+  const [lifecycleWeeklyLogs, setLifecycleWeeklyLogs] = useState([]);
+  const [selectedWeeklyLog, setSelectedWeeklyLog] = useState(null);
+  const [weeklyLogRemarks, setWeeklyLogRemarks] = useState('');
+  const [weeklyLogMarks, setWeeklyLogMarks] = useState(8);
+
+  const [lifecycleMeetings, setLifecycleMeetings] = useState([]);
+  const [selectedMeeting, setSelectedMeeting] = useState(null);
+  const [meetingDiscussion, setMeetingDiscussion] = useState('');
+  const [meetingActionItems, setMeetingActionItems] = useState('');
+  const [meetingAttendance, setMeetingAttendance] = useState('');
+
+  const [lifecyclePapers, setLifecyclePapers] = useState([]);
+  const [selectedPaper, setSelectedPaper] = useState(null);
+  const [paperFeedback, setPaperFeedback] = useState('');
+
+  const [selectedProjectGrading, setSelectedProjectGrading] = useState(null);
+  const [gradingForm, setGradingForm] = useState({
+    weekly_perf_marks: 25,
+    proj_impl_marks: 20,
+    final_report_marks: 18,
+    research_paper_marks: 12,
+    viva_marks: 8,
+    strengths: '',
+    weaknesses: '',
+    future_scope: ''
+  });
+
+  const [teacherSubTab, setTeacherSubTab] = useState('proposals');
 
   // Tab navigation states
   const [activeTab, setActiveTab] = useState('profile');
@@ -261,6 +296,49 @@ const TeacherDashboard = () => {
       
       const meets = await meetingAPI.getAll();
       setMeetings(meets);
+
+      // Fetch pending proposals
+      try {
+        const propRes = await lifecycleAPI.getPendingProposals();
+        setLifecycleProposals(propRes || []);
+      } catch (e) {
+        console.error("Error loading pending proposals:", e);
+      }
+
+      // Fetch weekly logs across all mentees projects
+      const allLogs = [];
+      
+      if (studs && studs.length > 0) {
+        for (const student of studs) {
+          if (student.projects && student.projects.length > 0) {
+            for (const proj of student.projects) {
+              try {
+                // Fetch weekly progress
+                const logs = await lifecycleAPI.getProjectWeeklyProgress(proj.id);
+                if (logs && logs.length > 0) {
+                  allLogs.push(...logs.map(l => ({ 
+                    ...l, 
+                    studentName: student.user?.name || student.name, 
+                    projectTitle: proj.title,
+                    projectId: proj.id
+                  })));
+                }
+              } catch (e) {
+                console.error("Error fetching logs for project:", proj.id, e);
+              }
+            }
+          }
+        }
+      }
+      setLifecycleWeeklyLogs(allLogs);
+
+      // Fetch meetings lifecycle
+      try {
+        const meetsRes = await lifecycleAPI.getMyMeetings();
+        setLifecycleMeetings(meetsRes || []);
+      } catch (e) {
+        console.error("Error loading lifecycle meetings for teacher:", e);
+      }
 
       if (user?.teacher_profile) {
         setProfileForm({
@@ -516,6 +594,101 @@ const TeacherDashboard = () => {
     }
   };
 
+  // Lifecycle Review Handlers
+  const handleProposalReviewAction = async (id, action) => {
+    try {
+      await lifecycleAPI.evaluateProposal(id, action, proposalRemarks, proposalDeadline);
+      showSuccess(`Proposal successfully marked as ${action.toUpperCase()}!`);
+      setSelectedProposal(null);
+      setProposalRemarks('');
+      setProposalDeadline('');
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showError("Failed to update proposal status.");
+    }
+  };
+
+  const handleWeeklyLogFeedbackAction = async (e) => {
+    e.preventDefault();
+    if (!selectedWeeklyLog) return;
+    try {
+      await lifecycleAPI.evaluateWeeklyProgress(
+        selectedWeeklyLog.id,
+        selectedWeeklyLog.status,
+        weeklyLogRemarks,
+        weeklyLogMarks
+      );
+      showSuccess("Weekly progress feedback submitted successfully!");
+      setSelectedWeeklyLog(null);
+      setWeeklyLogRemarks('');
+      setWeeklyLogMarks(8);
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showError("Failed to submit weekly log feedback.");
+    }
+  };
+
+  const handleMeetingApprovalAction = async (id, status) => {
+    try {
+      await lifecycleAPI.approveMeeting(id, status, meetingDiscussion, meetingActionItems, meetingAttendance);
+      showSuccess(`Meeting sync successfully marked as ${status.toUpperCase()}!`);
+      setSelectedMeeting(null);
+      setMeetingDiscussion('');
+      setMeetingActionItems('');
+      setMeetingAttendance('');
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showError("Failed to update meeting sync status.");
+    }
+  };
+
+  const handleResearchPaperReviewAction = async (id, status) => {
+    try {
+      await lifecycleAPI.evaluateResearchPaper(id, status, paperFeedback);
+      showSuccess(`Research paper status marked as ${status.toUpperCase()}!`);
+      setSelectedPaper(null);
+      setPaperFeedback('');
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showError("Failed to evaluate research paper.");
+    }
+  };
+
+  const handleCompileGradingScorecard = async (e) => {
+    e.preventDefault();
+    if (!selectedProjectGrading) return;
+    try {
+      const data = new FormData();
+      data.append('project_id', selectedProjectGrading.id);
+      Object.keys(gradingForm).forEach(key => {
+        data.append(key, gradingForm[key]);
+      });
+      data.append('suggestions', gradingForm.strengths); // mapping
+      data.append('recommendation', 'Grade published');
+      await lifecycleAPI.evaluateFinalProject(data);
+      showSuccess("Final project scorecard compiled and locked successfully!");
+      setSelectedProjectGrading(null);
+      setGradingForm({
+        weekly_perf_marks: 25,
+        proj_impl_marks: 20,
+        final_report_marks: 18,
+        research_paper_marks: 12,
+        viva_marks: 8,
+        strengths: '',
+        weaknesses: '',
+        future_scope: ''
+      });
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showError("Failed to save evaluation scorecard.");
+    }
+  };
+
   const handleAIRubricMarksRecommend = async () => {
     if (!rubricForm.project_id) {
       showError("Please select a project.");
@@ -671,6 +844,7 @@ const TeacherDashboard = () => {
       <div className="border-b border-slate-200 dark:border-slate-800 overflow-x-auto flex space-x-1.5 pb-0.5 scrollbar-thin">
         {[
           { id: 'profile', label: 'Faculty Profile', icon: User },
+          { id: 'lifecycle_reviews', label: 'Project Lifecycle Reviews', icon: FileText },
           { id: 'mentees', label: 'Mentees Directory', icon: BookOpen },
           { id: 'evaluations', label: 'Evaluation Hub', icon: FileCheck },
           { id: 'rubrics', label: 'Marks Rubric', icon: BarChart },
@@ -699,6 +873,642 @@ const TeacherDashboard = () => {
           );
         })}
       </div>
+      {/* 0. PROJECT LIFECYCLE REVIEWS WORKSPACE */}
+      {activeTab === 'lifecycle_reviews' && (
+        <div className="space-y-8 animate-fade-in text-slate-800 dark:text-slate-100">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sidebar Sub-Navigation */}
+            <div className="space-y-2">
+              <div className="bg-white dark:bg-slate-900 border p-4 rounded-2xl space-y-1">
+                <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 px-3 mb-2">Review Categories</h3>
+                {[
+                  { id: 'proposals', label: 'Proposals Appraiser', count: lifecycleProposals.length },
+                  { id: 'weekly', label: 'Weekly Progress Grader', count: lifecycleWeeklyLogs.filter(l => l.status === 'submitted').length },
+                  { id: 'meetings', label: 'Sync Session Minutes', count: lifecycleMeetings.filter(m => m.status === 'requested').length },
+                  { id: 'papers', label: 'Research Paper Reviews', count: lifecyclePapers.length },
+                  { id: 'grading', label: 'Final Grading Scorecard', count: 0 }
+                ].map(sub => (
+                  <button
+                    key={sub.id}
+                    onClick={() => {
+                      setTeacherSubTab(sub.id);
+                      setSelectedProposal(null);
+                      setSelectedWeeklyLog(null);
+                      setSelectedMeeting(null);
+                      setSelectedPaper(null);
+                      setSelectedProjectGrading(null);
+                    }}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                      teacherSubTab === sub.id
+                        ? 'bg-sky-500/10 text-sky-500 font-extrabold'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-500 hover:text-slate-850 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <span>{sub.label}</span>
+                    {sub.count > 0 && (
+                      <span className="bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold">
+                        {sub.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Workspace Area */}
+            <div className="lg:col-span-3 space-y-6">
+              
+              {/* 1. PROPOSALS APPRAISER SUBTAB */}
+              {teacherSubTab === 'proposals' && (
+                <Card title="Project Proposals Appraiser" subtitle="Review student group project ideas, architectures, and categories.">
+                  {lifecycleProposals.length === 0 ? (
+                    <div className="text-center py-10 border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                      No project proposals currently pending your review.
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {lifecycleProposals.map(prop => (
+                        <div key={prop.id} className="bg-slate-50 dark:bg-slate-900/40 border rounded-2xl p-5 space-y-4">
+                          <div className="flex justify-between items-start border-b pb-3">
+                            <div>
+                              <h3 className="font-extrabold text-base text-slate-850 dark:text-slate-100">{prop.title}</h3>
+                              <p className="text-xs text-slate-500 mt-1">Submitted by: {prop.student_name} ({prop.roll_number}) • Domain: {prop.domain}</p>
+                            </div>
+                            <span className="bg-sky-500/15 text-sky-600 px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              {prop.category}
+                            </span>
+                          </div>
+
+                          <div className="text-xs space-y-2">
+                            <div>
+                              <span className="font-bold text-slate-400 text-[10px] uppercase block mb-0.5">Problem Statement</span>
+                              <p className="whitespace-pre-wrap">{prop.problem_statement}</p>
+                            </div>
+                            <div className="pt-2">
+                              <span className="font-bold text-slate-400 text-[10px] uppercase block mb-0.5">Technologies / Tools Stack</span>
+                              <p>{prop.technologies_used}</p>
+                            </div>
+                          </div>
+
+                          {/* Documents Row */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-[10px]">
+                            {prop.proposal_pdf_url && (
+                              <a href={`http://localhost:8000/${prop.proposal_pdf_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-white text-center truncate">
+                                Download Proposal PDF
+                              </a>
+                            )}
+                            {prop.synopsis_url && (
+                              <a href={`http://localhost:8000/${prop.synopsis_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-white text-center truncate">
+                                Download Synopsis
+                              </a>
+                            )}
+                            {prop.literature_survey_url && (
+                              <a href={`http://localhost:8000/${prop.literature_survey_url}`} target="_blank" rel="noreferrer" className="p-2 border rounded-xl hover:bg-white text-center truncate">
+                                Literature Review
+                              </a>
+                            )}
+                          </div>
+
+                          {/* Actions panel */}
+                          <div className="border-t pt-4 mt-3 space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Guide Feedback / Remarks</label>
+                                <textarea 
+                                  placeholder="Provide appraisal comments or revision directions..."
+                                  value={selectedProposal?.id === prop.id ? proposalRemarks : ''}
+                                  onChange={e => {
+                                    setSelectedProposal(prop);
+                                    setProposalRemarks(e.target.value);
+                                  }}
+                                  rows={2}
+                                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Revision Deadline (If revision required)</label>
+                                <input 
+                                  type="date"
+                                  value={selectedProposal?.id === prop.id ? proposalDeadline : ''}
+                                  onChange={e => {
+                                    setSelectedProposal(prop);
+                                    setProposalDeadline(e.target.value);
+                                  }}
+                                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-2">
+                              <button 
+                                onClick={() => {
+                                  setSelectedProposal(prop);
+                                  handleProposalReviewAction(prop.id, 'revision_required');
+                                }} 
+                                className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 font-bold text-xs rounded-xl transition-all"
+                              >
+                                Request Revision
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedProposal(prop);
+                                  handleProposalReviewAction(prop.id, 'rejected');
+                                }} 
+                                className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold text-xs rounded-xl transition-all"
+                              >
+                                Reject Idea
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedProposal(prop);
+                                  handleProposalReviewAction(prop.id, 'approved');
+                                }} 
+                                className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-all"
+                              >
+                                Approve Project
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* 2. WEEKLY PROGRESS GRADER */}
+              {teacherSubTab === 'weekly' && (
+                <Card title="Weekly Progress Grader" subtitle="Log marks out of 10 and record comments on weekly student work logs.">
+                  <div className="space-y-4">
+                    {/* Student Selector */}
+                    <div className="flex items-center space-x-3 text-xs border-b pb-4">
+                      <span className="font-bold text-slate-400">Select Project:</span>
+                      <select 
+                        onChange={async e => {
+                          const val = e.target.value;
+                          if (val) {
+                            const selectedProjId = parseInt(val);
+                            const selectedP = students.flatMap(s => s.projects || []).find(p => p.id === selectedProjId);
+                            setSelectedProjectGrading(selectedP);
+                          } else {
+                            setSelectedProjectGrading(null);
+                          }
+                        }}
+                        className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl"
+                      >
+                        <option value="">-- All Projects --</option>
+                        {students.flatMap(s => s.projects || []).map(p => (
+                          <option key={p.id} value={p.id}>{p.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Timeline logs */}
+                    {lifecycleWeeklyLogs.length === 0 ? (
+                      <div className="text-center py-10 border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                        No progress logs uploaded by mentees yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {lifecycleWeeklyLogs
+                          .filter(log => !selectedProjectGrading || log.projectId === selectedProjectGrading.id)
+                          .map(log => (
+                            <div key={log.id} className="bg-slate-50 dark:bg-slate-900/40 border rounded-2xl p-5 space-y-4">
+                              <div className="flex justify-between items-center border-b pb-2">
+                                <div>
+                                  <span className="font-extrabold text-sm text-sky-500">Week {log.week_number} Progress Log</span>
+                                  <p className="text-[10px] text-slate-500 mt-0.5">Project: {log.projectTitle} ({log.studentName})</p>
+                                </div>
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
+                                  log.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                }`}>{log.status}</span>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                <div>
+                                  <span className="font-bold text-slate-400 text-[10px] uppercase block mb-0.5">Tasks Completed</span>
+                                  <p>{log.work_completed}</p>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-slate-400 text-[10px] uppercase block mb-0.5">Modules / Blocks Built</span>
+                                  <p>{log.modules_completed}</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px]">
+                                <div>
+                                  <span className="font-bold text-slate-400 uppercase">Hours Logged:</span>
+                                  <p className="font-bold text-xs">{log.hours_worked} hrs</p>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-slate-400 uppercase">Cumulative Progress:</span>
+                                  <p className="font-bold text-xs">{log.current_progress}%</p>
+                                </div>
+                                {log.github_repo_link && (
+                                  <div className="col-span-2">
+                                    <span className="font-bold text-slate-400 uppercase">Weekly Code Commit:</span>
+                                    <a href={log.github_repo_link} target="_blank" rel="noreferrer" className="block text-sky-500 truncate hover:underline">{log.github_repo_link}</a>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Document links */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-[9px]">
+                                {log.source_code_url && (
+                                  <a href={`http://localhost:8000/${log.source_code_url}`} target="_blank" rel="noreferrer" className="p-1 border rounded bg-white text-center truncate">
+                                    Download Weekly ZIP
+                                  </a>
+                                )}
+                                {log.documents_url && (
+                                  <a href={`http://localhost:8000/${log.documents_url}`} target="_blank" rel="noreferrer" className="p-1 border rounded bg-white text-center truncate">
+                                    Download Work DOC
+                                  </a>
+                                )}
+                                {log.database_backup_url && (
+                                  <a href={`http://localhost:8000/${log.database_backup_url}`} target="_blank" rel="noreferrer" className="p-1 border rounded bg-white text-center truncate">
+                                    Download SQLite DB
+                                  </a>
+                                )}
+                              </div>
+
+                              {/* Appraisal Grader Form */}
+                              <div className="border-t pt-4 mt-3">
+                                <form onSubmit={handleWeeklyLogFeedbackAction} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                                  <div className="md:col-span-2">
+                                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Feedback Evaluation Remarks</label>
+                                    <input 
+                                      required
+                                      type="text" 
+                                      placeholder="Appraise technical implementation, suggest code changes..."
+                                      value={selectedWeeklyLog?.id === log.id ? weeklyLogRemarks : ''}
+                                      onChange={e => {
+                                        setSelectedWeeklyLog({...log, status: 'approved'});
+                                        setWeeklyLogRemarks(e.target.value);
+                                      }}
+                                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl text-xs"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <div className="flex-1">
+                                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Marks (0-10)</label>
+                                      <input 
+                                        required
+                                        type="number" 
+                                        min={0} 
+                                        max={10}
+                                        value={selectedWeeklyLog?.id === log.id ? weeklyLogMarks : 8}
+                                        onChange={e => {
+                                          setSelectedWeeklyLog({...log, status: 'approved'});
+                                          setWeeklyLogMarks(parseInt(e.target.value));
+                                        }}
+                                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl text-xs"
+                                      />
+                                    </div>
+                                    <button 
+                                      type="submit" 
+                                      className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-xs transition-all"
+                                    >
+                                      Grade Log
+                                    </button>
+                                  </div>
+                                </form>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* 3. SYNC SESSION MINUTES */}
+              {teacherSubTab === 'meetings' && (
+                <Card title="Sync Meetings Reviewer" subtitle="Approve student sync meetings and record discussions notes.">
+                  {lifecycleMeetings.length === 0 ? (
+                    <div className="text-center py-10 border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                      No meeting requests currently logged.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {lifecycleMeetings.map(m => (
+                        <div key={m.id} className="bg-slate-50 dark:bg-slate-900/40 border rounded-2xl p-5 space-y-4 text-xs">
+                          <div className="flex justify-between items-center border-b pb-2">
+                            <div>
+                              <span className="font-extrabold text-sm text-sky-500">{m.discussion}</span>
+                              <p className="text-[10px] text-slate-500 mt-0.5">Requested by: {m.student_name} ({m.roll_number})</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              m.status === 'requested' ? 'bg-sky-500/10 text-sky-500' : 'bg-slate-100 text-slate-500'
+                            }`}>{m.status}</span>
+                          </div>
+
+                          <p className="font-semibold">Meeting Target: {m.meeting_date} at {m.time}</p>
+
+                          {m.status === 'requested' && (
+                            <div className="border-t pt-4 mt-3 space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Discussions Summary Minutes</label>
+                                  <textarea 
+                                    placeholder="Enter points discussed in session..."
+                                    value={selectedMeeting?.id === m.id ? meetingDiscussion : ''}
+                                    onChange={e => {
+                                      setSelectedMeeting(m);
+                                      setMeetingDiscussion(e.target.value);
+                                    }}
+                                    rows={2}
+                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Action Items Checklist</label>
+                                  <textarea 
+                                    placeholder="Add tasks students must complete next week..."
+                                    value={selectedMeeting?.id === m.id ? meetingActionItems : ''}
+                                    onChange={e => {
+                                      setSelectedMeeting(m);
+                                      setMeetingActionItems(e.target.value);
+                                    }}
+                                    rows={2}
+                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Student Attendance Profile</label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="e.g. Present: Alice, Bob. Absent: none"
+                                    value={selectedMeeting?.id === m.id ? meetingAttendance : ''}
+                                    onChange={e => {
+                                      setSelectedMeeting(m);
+                                      setMeetingAttendance(e.target.value);
+                                    }}
+                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex justify-end gap-3 pt-2">
+                                <button 
+                                  onClick={() => {
+                                    setSelectedMeeting(m);
+                                    handleMeetingApprovalAction(m.id, 'completed');
+                                  }}
+                                  className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-all"
+                                >
+                                  Mark as Completed
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setSelectedMeeting(m);
+                                    handleMeetingApprovalAction(m.id, 'approved');
+                                  }}
+                                  className="px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-all"
+                                >
+                                  Approve / Confirm Date
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* 4. RESEARCH PAPER REVIEWS SUBTAB */}
+              {teacherSubTab === 'papers' && (
+                <Card title="Research Paper manuscript reviewer" subtitle="Examine student manuscript submissions, draft feedback, and assign status.">
+                  {students.filter(s => s.projects && s.projects[0] && s.projects[0].research_papers && s.projects[0].research_papers.length > 0).length === 0 ? (
+                    <div className="text-center py-10 border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                      No research papers uploaded by mentees yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {students.flatMap(s => s.projects || []).flatMap(p => p.research_papers || []).map(paper => (
+                        <div key={paper.id} className="bg-slate-50 dark:bg-slate-900/40 border rounded-2xl p-5 space-y-4 text-xs">
+                          <div className="flex justify-between items-start border-b pb-2">
+                            <div>
+                              <h3 className="font-extrabold text-sm">{paper.title}</h3>
+                              <p className="text-[10px] text-slate-500 mt-0.5">Submitted by Student ID: {paper.student_id} • Status: {paper.status}</p>
+                            </div>
+                          </div>
+
+                          <p className="italic text-slate-600 dark:text-slate-350">Abstract: "{paper.abstract}"</p>
+                          <p className="text-[10px] text-slate-400">Keywords: {paper.keywords} • Journal/Conf: {paper.journal || paper.conference || "N/A"}</p>
+
+                          {paper.paper_url && (
+                            <a href={`http://localhost:8000/${paper.paper_url}`} target="_blank" rel="noreferrer" className="inline-block text-sky-500 hover:underline">
+                              Download Manuscript PDF
+                            </a>
+                          )}
+
+                          <div className="border-t pt-4 mt-3 space-y-3">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Manuscript Review Feedback Comments</label>
+                              <textarea 
+                                placeholder="Enter specific modifications, missing references, grammar edits required..."
+                                value={selectedPaper?.id === paper.id ? paperFeedback : ''}
+                                onChange={e => {
+                                  setSelectedPaper(paper);
+                                  setPaperFeedback(e.target.value);
+                                }}
+                                rows={3}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl"
+                              />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                              <button 
+                                onClick={() => {
+                                  setSelectedPaper(paper);
+                                  handleResearchPaperReviewAction(paper.id, 'approved');
+                                }}
+                                className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-all"
+                              >
+                                Approve / Accept Paper
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* 5. FINAL GRADING SCORECARD SUBTAB */}
+              {teacherSubTab === 'grading' && (
+                <Card title="Weighted Grading Scorecard" subtitle="Grade finished student projects and compile their final marks sheets.">
+                  <div className="space-y-6">
+                    {/* Project selector dropdown */}
+                    <div className="flex items-center space-x-3 text-xs border-b pb-4">
+                      <span className="font-bold text-slate-400">Select Project Group:</span>
+                      <select 
+                        onChange={async e => {
+                          const val = e.target.value;
+                          if (val) {
+                            const selectedProjId = parseInt(val);
+                            const selectedP = students.flatMap(s => s.projects || []).find(p => p.id === selectedProjId);
+                            setSelectedProjectGrading(selectedP);
+                          } else {
+                            setSelectedProjectGrading(null);
+                          }
+                        }}
+                        className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl"
+                      >
+                        <option value="">-- Choose Project --</option>
+                        {students.flatMap(s => s.projects || []).map(p => (
+                          <option key={p.id} value={p.id}>{p.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedProjectGrading ? (
+                      <form onSubmit={handleCompileGradingScorecard} className="space-y-6 text-xs">
+                        
+                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl space-y-2">
+                          <h4 className="font-bold text-slate-800 dark:text-slate-100">{selectedProjectGrading.title}</h4>
+                          <p className="text-[10px] text-slate-400">Student: ID {selectedProjectGrading.student_id} • Status: {selectedProjectGrading.status}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-450 font-bold uppercase mb-1">Weekly Performance (0-30)</label>
+                            <input 
+                              required 
+                              type="number" 
+                              min={0} 
+                              max={30} 
+                              value={gradingForm.weekly_perf_marks} 
+                              onChange={e => setGradingForm({...gradingForm, weekly_perf_marks: parseFloat(e.target.value)})}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-450 font-bold uppercase mb-1">Implementation (0-25)</label>
+                            <input 
+                              required 
+                              type="number" 
+                              min={0} 
+                              max={25} 
+                              value={gradingForm.proj_impl_marks} 
+                              onChange={e => setGradingForm({...gradingForm, proj_impl_marks: parseFloat(e.target.value)})}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-450 font-bold uppercase mb-1">Final Report PDF (0-20)</label>
+                            <input 
+                              required 
+                              type="number" 
+                              min={0} 
+                              max={20} 
+                              value={gradingForm.final_report_marks} 
+                              onChange={e => setGradingForm({...gradingForm, final_report_marks: parseFloat(e.target.value)})}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-455 font-bold uppercase mb-1">Research Paper (0-15)</label>
+                            <input 
+                              required 
+                              type="number" 
+                              min={0} 
+                              max={15} 
+                              value={gradingForm.research_paper_marks} 
+                              onChange={e => setGradingForm({...gradingForm, research_paper_marks: parseFloat(e.target.value)})}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-450 font-bold uppercase mb-1">Viva / Slides (0-10)</label>
+                            <input 
+                              required 
+                              type="number" 
+                              min={0} 
+                              max={10} 
+                              value={gradingForm.viva_marks} 
+                              onChange={e => setGradingForm({...gradingForm, viva_marks: parseFloat(e.target.value)})}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Key Strengths</label>
+                            <textarea 
+                              required 
+                              rows={3} 
+                              value={gradingForm.strengths} 
+                              onChange={e => setGradingForm({...gradingForm, strengths: e.target.value})} 
+                              placeholder="Identify key strengths of database designs or interfaces..."
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Areas of Improvement</label>
+                            <textarea 
+                              required 
+                              rows={3} 
+                              value={gradingForm.weaknesses} 
+                              onChange={e => setGradingForm({...gradingForm, weaknesses: e.target.value})} 
+                              placeholder="Detail compiler errors, formatting bugs, missing tests..."
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Suggested Future Scope</label>
+                          <textarea 
+                            required 
+                            rows={2} 
+                            value={gradingForm.future_scope} 
+                            onChange={e => setGradingForm({...gradingForm, future_scope: e.target.value})} 
+                            placeholder="Detail scale scalability additions, microservice transitions..."
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border rounded-xl" 
+                          />
+                        </div>
+
+                        <div className="flex justify-between items-center border-t pt-4">
+                          <div className="text-xs">
+                            <span className="font-bold text-slate-400">Total Score:</span>
+                            <span className="ml-1 text-sm font-extrabold text-sky-500">
+                              {(gradingForm.weekly_perf_marks + gradingForm.proj_impl_marks + gradingForm.final_report_marks + gradingForm.research_paper_marks + gradingForm.viva_marks)} / 100
+                            </span>
+                          </div>
+
+                          <button 
+                            type="submit" 
+                            className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all"
+                          >
+                            Lock & Publish Grade
+                          </button>
+                        </div>
+
+                      </form>
+                    ) : (
+                      <div className="p-6 text-center border border-dashed rounded-2xl text-xs text-slate-500 italic">
+                        Choose a project group from the dropdown to start scorecard grading.
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 2. PROFILE */}
       {activeTab === 'profile' && (
         <Card title="Faculty Details Manager" className="animate-fade-in">

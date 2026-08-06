@@ -494,4 +494,156 @@ export const notificationAPI = {
   }
 };
 
+export const lifecycleAPI = {
+  // Proposals
+  saveProposalDraft: async (formData) => {
+    const res = await api.post('/lifecycle/proposal/draft', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  submitProposal: async (formData) => {
+    const res = await api.post('/lifecycle/proposal/submit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getMyProposal: async () => {
+    const res = await api.get('/lifecycle/proposal/my');
+    return res.data;
+  },
+  deleteProposalDraft: async (id) => {
+    const res = await api.delete(`/lifecycle/proposal/${id}`);
+    return res.data;
+  },
+  getPendingProposals: async () => {
+    const res = await api.get('/lifecycle/proposal/pending');
+    return res.data;
+  },
+  evaluateProposal: async (id, action, remarks, deadline) => {
+    const formData = new FormData();
+    formData.append('action', action);
+    if (remarks) formData.append('remarks', remarks);
+    if (deadline) formData.append('deadline', deadline);
+    const res = await api.post(`/lifecycle/proposal/${id}/action`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  // Weekly Progress
+  submitWeeklyProgress: async (formData) => {
+    const res = await api.post('/lifecycle/weekly/submit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getMyWeeklyProgress: async () => {
+    const res = await api.get('/lifecycle/weekly/my');
+    return res.data;
+  },
+  getProjectWeeklyProgress: async (projectId) => {
+    const res = await api.get(`/lifecycle/weekly/project/${projectId}`);
+    return res.data;
+  },
+  evaluateWeeklyProgress: async (id, status, comments, weeklyMarks) => {
+    const formData = new FormData();
+    formData.append('status', status);
+    if (comments) formData.append('comments', comments);
+    formData.append('weekly_marks', weeklyMarks);
+    const res = await api.post(`/lifecycle/weekly/${id}/feedback`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  // Meetings
+  requestMeeting: async (formData) => {
+    const res = await api.post('/lifecycle/meetings/request', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getMyMeetings: async () => {
+    const res = await api.get('/lifecycle/meetings/my');
+    return res.data;
+  },
+  approveMeeting: async (id, status, discussion, actionItems, attendance) => {
+    const formData = new FormData();
+    formData.append('status', status);
+    if (discussion) formData.append('discussion', discussion);
+    if (actionItems) formData.append('action_items', actionItems);
+    if (attendance) formData.append('attendance', attendance);
+    const res = await api.post(`/lifecycle/meetings/${id}/approve`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  // Final submission
+  submitFinalReport: async (formData) => {
+    const res = await api.post('/lifecycle/final/submit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getMyFinalSubmission: async () => {
+    const res = await api.get('/lifecycle/final/my');
+    return res.data;
+  },
+  evaluateFinalProject: async (formData) => {
+    const res = await api.post('/lifecycle/final/evaluate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getProjectFinalEvaluation: async (projectId) => {
+    const res = await api.get(`/lifecycle/evaluation/project/${projectId}`);
+    return res.data;
+  },
+
+  // Research paper lifecycle
+  uploadResearchPaper: async (formData) => {
+    const res = await api.post('/lifecycle/research-paper/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  getMyResearchPaper: async () => {
+    const res = await api.get('/lifecycle/research-paper/my');
+    return res.data;
+  },
+  evaluateResearchPaper: async (id, status, reviewFeedback) => {
+    const formData = new FormData();
+    formData.append('status', status);
+    if (reviewFeedback) formData.append('review_feedback', reviewFeedback);
+    const res = await api.post(`/lifecycle/research-paper/${id}/action`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  // AI reviews
+  reviewResearchPaperAI: async (formData) => {
+    const res = await api.post('/lifecycle/ai/review-paper', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  reviewProjectReportAI: async (formData) => {
+    const res = await api.post('/lifecycle/ai/review-report', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  // Plagiarism checks
+  runPlagiarismCheck: async (formData) => {
+    const res = await api.post('/lifecycle/plagiarism/check', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  }
+};
+
 export default api;
