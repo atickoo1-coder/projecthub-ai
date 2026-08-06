@@ -830,8 +830,8 @@ const AdminDashboard = () => {
               <input
                 type="text"
                 placeholder="Search students..."
-                value={studentSearch}
-                onChange={e => setStudentSearch(e.target.value)}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
               />
             </div>
