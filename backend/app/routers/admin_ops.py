@@ -176,7 +176,7 @@ def get_students_directory(
             "guide_id": s.guide_id,
             "guide_name": s.guide.user.name if s.guide else "Unassigned",
             "project_title": proj.title if proj else "No Project",
-            "project_progress": proj.progress_percentage if proj else 0,
+            "project_progress": max(up.progress_percentage for up in proj.progress_updates) if proj and proj.progress_updates else 0,
             "project_status": proj.status if proj else "N/A"
         })
     return res
