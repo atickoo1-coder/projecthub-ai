@@ -1151,8 +1151,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           { id: 'placements', label: 'Placement Board', icon: Briefcase },
           { id: 'certificates', label: 'Certificates', icon: Award },
           { id: 'publications', label: 'Research & Publications', icon: BookOpen },
-          { id: 'ai_copilot', label: 'AI Workspace', icon: Sparkles },
-          { id: 'analytics', label: 'Performance Analytics', icon: BarChart }
+          { id: 'ai_copilot', label: 'AI Workspace', icon: Sparkles }
         ].map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -3261,63 +3260,6 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                   <pre className="p-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl text-xs whitespace-pre-wrap font-mono leading-normal text-slate-750 dark:text-slate-355">
                     {aiReportResult}
                   </pre>
-                )}
-              </div>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* 9. PERFORMANCE ANALYTICS */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-8 animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card title="Project Cumulative Progress Timeline">
-              <div className="h-[250px] flex items-center justify-center">
-                {activeProject?.progress_updates && activeProject.progress_updates.length > 0 ? (
-                  <Line 
-                    data={getWeeklyProgressChartData()} 
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      scales: { y: { min: 0, max: 100 } }
-                    }}
-                  />
-                ) : (
-                  <span className="text-xs text-slate-450 italic">No progress logs to graph.</span>
-                )}
-              </div>
-            </Card>
-
-            <Card title="Milestones Evaluation Scores">
-              <div className="h-[250px] flex items-center justify-center">
-                {milestones.length > 0 ? (
-                  <Bar 
-                    data={getMilestoneChartData()} 
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      scales: { y: { min: 0, max: 20 } }
-                    }}
-                  />
-                ) : (
-                  <span className="text-xs text-slate-455 italic">No milestones logs to graph.</span>
-                )}
-              </div>
-            </Card>
-
-            <Card title="Weekly Hours Contributed">
-              <div className="h-[250px] flex items-center justify-center">
-                {activeProject?.progress_updates && activeProject.progress_updates.length > 0 ? (
-                  <Doughnut 
-                    data={getHoursWorkedChartData()}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false
-                    }}
-                  />
-                ) : (
-                  <span className="text-xs text-slate-455 italic">No progress logs to graph.</span>
                 )}
               </div>
             </Card>
