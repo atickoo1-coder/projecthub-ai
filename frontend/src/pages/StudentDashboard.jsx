@@ -1146,12 +1146,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           { id: 'lifecycle', label: 'Project Lifecycle', icon: FileText },
           { id: 'overview', label: 'Overview', icon: Folder },
           { id: 'files', label: 'File Locker', icon: UploadCloud },
-          { id: 'integrations', label: 'GitHub Integration Dashboard', icon: Github },
-          { id: 'guide', label: 'Advisor Guide', icon: User },
-          { id: 'placements', label: 'Placement Board', icon: Briefcase },
-          { id: 'certificates', label: 'Certificates', icon: Award },
-          { id: 'publications', label: 'Research & Publications', icon: BookOpen },
-          { id: 'ai_copilot', label: 'AI Workspace', icon: Sparkles }
+          { id: 'integrations', label: 'GitHub Integration Dashboard', icon: Github }
         ].map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
