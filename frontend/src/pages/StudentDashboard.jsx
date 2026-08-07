@@ -1184,11 +1184,10 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                   {[
                     { id: 'proposal', label: '1. Project Proposal', count: lifecycleProposal ? 1 : 0 },
                     { id: 'weekly', label: '2. Weekly Progress Logs', count: weeklyLogs.length },
-                    { id: 'meetings', label: '3. Sync Meetings', count: meetingsLifecycle.length },
-                    { id: 'research_paper', label: '4. Research Paper Draft', count: researchPaper ? 1 : 0 },
-                    { id: 'ai_plagiarism', label: '5. AI & Plagiarism Diagnostic', count: plagReportResult ? 1 : 0 },
-                    { id: 'final_submission', label: '6. Final Deliverables', count: finalSubmission ? 1 : 0 },
-                    { id: 'final_grade', label: '7. Academic Scorecard', count: finalEvaluation ? 1 : 0 }
+                    { id: 'research_paper', label: '3. Research Paper Draft', count: researchPaper ? 1 : 0 },
+                    { id: 'ai_plagiarism', label: '4. AI & Plagiarism Diagnostic', count: plagReportResult ? 1 : 0 },
+                    { id: 'final_submission', label: '5. Final Deliverables', count: finalSubmission ? 1 : 0 },
+                    { id: 'final_grade', label: '6. Academic Scorecard', count: finalEvaluation ? 1 : 0 }
                   ].map(sub => (
                     <button
                       key={sub.id}
@@ -1216,13 +1215,13 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                     <div className="flex justify-between items-center text-[10px]">
                       <span>Stage Checklist</span>
                       <span className="font-bold">
-                        {((lifecycleProposal ? 1 : 0) + (weeklyLogs.length > 0 ? 1 : 0) + (meetingsLifecycle.length > 0 ? 1 : 0) + (researchPaper ? 1 : 0) + (finalSubmission ? 1 : 0) + (finalEvaluation ? 1 : 0))} / 6 Completed
+                        {((lifecycleProposal ? 1 : 0) + (weeklyLogs.length > 0 ? 1 : 0) + (researchPaper ? 1 : 0) + (finalSubmission ? 1 : 0) + (finalEvaluation ? 1 : 0))} / 5 Completed
                       </span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-slate-850 h-2 rounded-full overflow-hidden">
                       <div 
                         className="bg-sky-500 h-full transition-all duration-500" 
-                        style={{ width: `${(((lifecycleProposal ? 1 : 0) + (weeklyLogs.length > 0 ? 1 : 0) + (meetingsLifecycle.length > 0 ? 1 : 0) + (researchPaper ? 1 : 0) + (finalSubmission ? 1 : 0) + (finalEvaluation ? 1 : 0)) / 6) * 100}%` }}
+                        style={{ width: `${(((lifecycleProposal ? 1 : 0) + (weeklyLogs.length > 0 ? 1 : 0) + (researchPaper ? 1 : 0) + (finalSubmission ? 1 : 0) + (finalEvaluation ? 1 : 0)) / 5) * 100}%` }}
                       ></div>
                     </div>
                   </div>
@@ -1483,72 +1482,6 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                   </div>
                 )}
 
-                {/* 3. WEEKLY MEETING SCHEDULER SECTION */}
-                {lifecycleSubTab === 'meetings' && (
-                  <div className="space-y-6">
-                    <Card title="Request Project Sync Sync" subtitle="Schedule weekly project evaluations or timeline reviews with your mentor.">
-                      <form onSubmit={handleLifecycleMeetingRequest} className="space-y-4 text-xs">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Meeting Date *</label>
-                            <input required type="date" value={lifecycleMeetForm.meeting_date} onChange={e => setLifecycleMeetForm({...lifecycleMeetForm, meeting_date: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Preferred Time *</label>
-                            <input required type="time" value={lifecycleMeetForm.time} onChange={e => setLifecycleMeetForm({...lifecycleMeetForm, time: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Agenda / Discussion Topic *</label>
-                          <textarea required rows={3} placeholder="What components or blockers are you planning to showcase?" value={lifecycleMeetForm.discussion} onChange={e => setLifecycleMeetForm({...lifecycleMeetForm, discussion: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-                        </div>
-
-                        <div className="flex justify-end">
-                          <button type="submit" className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all">
-                            Send Request
-                          </button>
-                        </div>
-                      </form>
-                    </Card>
-
-                    {/* Schedule listing */}
-                    <div className="space-y-3">
-                      <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Meeting Schedules</h3>
-                      {meetingsLifecycle.length === 0 ? (
-                        <div className="p-6 text-center border border-dashed rounded-2xl text-xs text-slate-500 italic">
-                          No meetings logged or requested yet.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {meetingsLifecycle.map(m => (
-                            <div key={m.id} className="bg-white dark:bg-slate-900 border rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs">
-                              <div>
-                                <span className="font-bold block text-sm">{m.discussion}</span>
-                                <span className="block text-slate-500 mt-1">Date: {m.meeting_date} at {m.time}</span>
-                                {m.action_items && (
-                                  <span className="block mt-2 text-[11px] p-2 bg-slate-50 dark:bg-slate-850 rounded-lg italic">
-                                    **Action Items:** {m.action_items}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-3">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                                  m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                                  m.status === 'approved' ? 'bg-indigo-500/10 text-indigo-500' :
-                                  m.status === 'requested' ? 'bg-sky-500/10 text-sky-500' :
-                                  'bg-rose-500/10 text-rose-500'
-                                }`}>
-                                  {m.status}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* 4. RESEARCH PAPER DRAFT SECTION */}
                 {lifecycleSubTab === 'research_paper' && (
