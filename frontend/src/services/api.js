@@ -16,6 +16,31 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.data && error.response.data.detail) {
+      const detail = error.response.data.detail;
+      if (Array.isArray(detail)) {
+        const messages = detail.map(errObj => {
+          if (typeof errObj === 'string') {
+            return errObj;
+          }
+          if (errObj && typeof errObj === 'object') {
+            const field = errObj.loc ? errObj.loc[errObj.loc.length - 1] : '';
+            return field ? `${field}: ${errObj.msg || JSON.stringify(errObj)}` : (errObj.msg || JSON.stringify(errObj));
+          }
+          return String(errObj);
+        });
+        error.response.data.detail = messages.join(', ');
+      } else if (typeof detail === 'object') {
+        error.response.data.detail = JSON.stringify(detail);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authAPI = {
   login: async (email, password) => {
     const params = new URLSearchParams();
