@@ -140,6 +140,7 @@ const AdminDashboard = () => {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadSummary, setUploadSummary] = useState(null);
   const [uploadDeptId, setUploadDeptId] = useState('');
+  const [createdCredentials, setCreatedCredentials] = useState(null);
 
   // Allocation Forms
   const [manualAllocForm, setManualAllocForm] = useState({ student_id: '', teacher_id: '' });
@@ -243,7 +244,7 @@ const AdminDashboard = () => {
     setError(null);
     setSuccess(false);
     try {
-      await adminAPI.createStudentManual({
+      const res = await adminAPI.createStudentManual({
         ...newStudentForm,
         department_id: parseInt(newStudentForm.department_id),
         year: parseInt(newStudentForm.year),
@@ -252,6 +253,7 @@ const AdminDashboard = () => {
         cgpa: parseFloat(newStudentForm.cgpa) || 8.0,
         guide_id: newStudentForm.guide_id ? parseInt(newStudentForm.guide_id) : null
       });
+      setCreatedCredentials(res);
       setSuccess(true);
       setShowAddStudent(false);
       setNewStudentForm({
@@ -331,6 +333,21 @@ const AdminDashboard = () => {
     } catch (err) {
       setError(err.response?.data?.detail || "Delete operation failed.");
     }
+  };
+
+  const downloadCredentialsCSV = (creds) => {
+    const csvRows = [["Name", "Roll Number", "Username/Email", "Password"]];
+    creds.forEach(c => {
+      csvRows.push([`"${c.name}"`, `"${c.roll}"`, `"${c.username}"`, `"${c.password}"`]);
+    });
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "student_login_credentials.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleBulkUpload = async (e) => {
@@ -2020,11 +2037,42 @@ const AdminDashboard = () => {
                 />
               </div>
               {uploadSummary && (
-                <div className="p-4 bg-slate-50 dark:bg-slate-950 border rounded-2xl text-[11px] font-mono leading-relaxed space-y-1">
-                  <span className="block text-emerald-500 font-extrabold text-xs pb-1.5 border-b mb-1.5">✓ Records successfully imported!</span>
-                  <span className="block text-emerald-600 font-bold">{uploadSummary.imported} Students Imported</span>
-                  <span className="block text-amber-500 font-bold">{uploadSummary.duplicates} Duplicate Records Bypassed</span>
-                  <span className="block text-rose-500 font-bold">{uploadSummary.invalid} Invalid Records Bypassed</span>
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-950 border rounded-2xl text-[11px] font-mono leading-relaxed space-y-1">
+                    <span className="block text-emerald-500 font-extrabold text-xs pb-1.5 border-b mb-1.5">✓ Records successfully imported!</span>
+                    <span className="block text-emerald-600 font-bold">{uploadSummary.imported} Students Imported</span>
+                    <span className="block text-amber-500 font-bold">{uploadSummary.duplicates} Duplicate Records Bypassed</span>
+                    <span className="block text-rose-500 font-bold">{uploadSummary.invalid} Invalid Records Bypassed</span>
+                  </div>
+
+                  {uploadSummary.credentials && uploadSummary.credentials.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[10px] uppercase text-slate-400">Generated Login Credentials:</span>
+                        <button
+                          type="button"
+                          onClick={() => downloadCredentialsCSV(uploadSummary.credentials)}
+                          className="py-1 px-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[9px] font-bold transition-all"
+                        >
+                          Download Credentials (.csv)
+                        </button>
+                      </div>
+
+                      <div className="max-h-36 overflow-y-auto border rounded-xl divide-y dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-950/50 font-mono text-[9px]">
+                        {uploadSummary.credentials.map((c, i) => (
+                          <div key={i} className="p-2 flex justify-between items-center">
+                            <div>
+                              <span className="font-bold block text-slate-700 dark:text-slate-300">{c.name}</span>
+                              <span className="text-slate-400">{c.username}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="block text-slate-450">PW: <span className="font-bold text-rose-500">{c.password}</span></span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="flex justify-end space-x-2 pt-4">
@@ -2032,6 +2080,39 @@ const AdminDashboard = () => {
                 <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold">Start Import</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MANUAL CREATION CREDENTIALS MODAL */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in text-xs">
+          <div className="bg-white dark:bg-slate-900 border rounded-3xl w-full max-w-sm p-8 shadow-2xl relative text-center space-y-4">
+            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">✓</div>
+            <h3 className="font-extrabold text-lg">Student Login Credentials</h3>
+            <p className="text-slate-450 text-[10px]">A unique username and password have been generated for the student. Copy these details for their login.</p>
+            
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border rounded-2xl text-left space-y-2 font-mono">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold block uppercase">Student Name:</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{createdCredentials.name}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold block uppercase">Username (Email):</span>
+                <span className="text-xs font-bold text-indigo-500">{createdCredentials.username}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold block uppercase">Generated Password:</span>
+                <span className="text-xs font-bold text-rose-500">{createdCredentials.password}</span>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setCreatedCredentials(null)}
+              className="w-full py-2.5 bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-xl"
+            >
+              Done & Close
+            </button>
           </div>
         </div>
       )}

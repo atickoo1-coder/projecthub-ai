@@ -5,12 +5,18 @@ from typing import List, Optional
 import io
 import csv
 import openpyxl
+import secrets
+import string
 from ..core.db import get_db
 from ..core.security import RoleChecker, get_current_user_payload, get_password_hash
 from ..models import models
 from ..schemas import schemas
 from fastapi.responses import StreamingResponse
 import json
+
+def generate_random_password(length=8):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 router = APIRouter(prefix="/api/admin/ops", tags=["admin_ops"], dependencies=[Depends(RoleChecker(["admin"]))])
 
@@ -192,11 +198,16 @@ def create_student_manual(student_in: schemas.StudentCreate, db: Session = Depen
     if existing_roll:
         raise HTTPException(status_code=400, detail="Roll number already registered")
 
+    # Generate unique password if empty or default
+    plain_password = student_in.password
+    if not plain_password or plain_password == "password123":
+        plain_password = generate_random_password()
+
     # Create User
     db_user = models.User(
         name=student_in.name,
         email=student_in.email,
-        hashed_password=get_password_hash(student_in.password),
+        hashed_password=get_password_hash(plain_password),
         role="student",
         is_active=True
     )
@@ -225,7 +236,12 @@ def create_student_manual(student_in: schemas.StudentCreate, db: Session = Depen
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
-    return {"detail": "Student created successfully", "id": db_student.id}
+    return {
+        "detail": "Student created successfully",
+        "id": db_student.id,
+        "username": db_user.email,
+        "password": plain_password
+    }
 
 @router.put("/students/{student_id}")
 def update_student_profile(student_id: int, student_update: schemas.StudentUpdate, db: Session = Depends(get_db)):
@@ -305,6 +321,7 @@ async def bulk_upload_students(file: UploadFile = File(...), department_id: Opti
     imported = 0
     duplicates = 0
     invalid = 0
+    credentials = []
 
     for r in records:
         try:
@@ -408,7 +425,8 @@ async def bulk_upload_students(file: UploadFile = File(...), department_id: Opti
                 continue
 
             # Create User
-            hashed_pwd = get_password_hash("password123")
+            plain_pwd = generate_random_password()
+            hashed_pwd = get_password_hash(plain_pwd)
             db_user = models.User(name=name, email=email, hashed_password=hashed_pwd, role="student")
             db.add(db_user)
             db.flush()
@@ -432,6 +450,12 @@ async def bulk_upload_students(file: UploadFile = File(...), department_id: Opti
             )
             db.add(db_stud)
             db.commit()
+            credentials.append({
+                "name": name,
+                "roll": str(roll),
+                "username": email,
+                "password": plain_pwd
+            })
             imported += 1
 
         except Exception as e:
@@ -445,7 +469,8 @@ async def bulk_upload_students(file: UploadFile = File(...), department_id: Opti
     return {
         "imported": imported,
         "duplicates": duplicates,
-        "invalid": invalid
+        "invalid": invalid,
+        "credentials": credentials
     }
 
 @router.get("/students/hierarchy")
