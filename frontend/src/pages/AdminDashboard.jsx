@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI, hodAPI, teacherAPI } from '../services/api';
+import { adminAPI, hodAPI, teacherAPI, lifecycleAPI } from '../services/api';
 import Card from '../components/Card';
 import { Link } from 'react-router-dom';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
@@ -42,7 +42,8 @@ import {
   Sliders,
   Settings,
   HelpCircle,
-  UserCheck
+  UserCheck,
+  ClipboardList
 } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, ChartTitle, Tooltip, Legend);
@@ -69,6 +70,16 @@ const AdminDashboard = () => {
     classes: []
   });
   const [hierarchy, setHierarchy] = useState({});
+
+  // Project Group Management State
+  const [adminProjects, setAdminProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [editingProjectTitle, setEditingProjectTitle] = useState('');
+  const [editingProjectMembers, setEditingProjectMembers] = useState([]);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberRoll, setNewMemberRoll] = useState('');
+  const [allStudents, setAllStudents] = useState([]);
+  const [proposals, setProposals] = useState([]);
 
   // Tree View Expand States (keyed by node string path)
   const [expandedNodes, setExpandedNodes] = useState({});
@@ -128,6 +139,7 @@ const AdminDashboard = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadSummary, setUploadSummary] = useState(null);
+  const [uploadDeptId, setUploadDeptId] = useState('');
 
   // Allocation Forms
   const [manualAllocForm, setManualAllocForm] = useState({ student_id: '', teacher_id: '' });
@@ -198,6 +210,15 @@ const AdminDashboard = () => {
 
       const annRes = await adminAPI.getAnnouncements();
       setAnnouncements(annRes);
+
+      const projectsRes = await adminAPI.getProjects();
+      setAdminProjects(projectsRes);
+
+      const allStudentsRes = await adminAPI.getStudents();
+      setAllStudents(allStudentsRes);
+
+      const proposalsRes = await lifecycleAPI.getAllProposals();
+      setProposals(proposalsRes);
     } catch (err) {
       console.error(err);
       setError("Failed to fetch dashboard metrics.");
@@ -241,6 +262,28 @@ const AdminDashboard = () => {
       fetchData();
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to create student profile.");
+    }
+  };
+
+  const handleUpdateProjectGroup = async (e) => {
+    e.preventDefault();
+    if (!selectedProjectId) return;
+    setError(null);
+    setSuccess(false);
+    setLoading(true);
+    try {
+      await adminAPI.updateProject(selectedProjectId, {
+        title: editingProjectTitle,
+        group_members: JSON.stringify(editingProjectMembers),
+        team_size: editingProjectMembers.length + 1
+      });
+      setSuccess(true);
+      const updatedProjs = await adminAPI.getProjects();
+      setAdminProjects(updatedProjs);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to update project group.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -299,7 +342,7 @@ const AdminDashboard = () => {
     setError(null);
     setSuccess(false);
     try {
-      const summary = await adminAPI.bulkUploadStudents(uploadFile);
+      const summary = await adminAPI.bulkUploadStudents(uploadFile, uploadDeptId);
       setUploadSummary(summary);
       setSuccess(true);
       setUploadFile(null);
@@ -598,6 +641,8 @@ const AdminDashboard = () => {
           { id: 'students', label: 'Student Directory', icon: GraduationCap },
           { id: 'teachers', label: 'Teacher Directory', icon: Users },
           { id: 'allocations', label: 'Guide Allocations', icon: UserCheck },
+          { id: 'project-groups', label: 'Project Groups', icon: FolderOpen },
+          { id: 'proposals', label: 'Project Proposals', icon: ClipboardList },
           { id: 'org', label: 'Academic Setup', icon: Settings },
           { id: 'reports', label: 'Reports Export', icon: Download }
         ].map(t => {
@@ -1495,6 +1540,304 @@ const AdminDashboard = () => {
         </Card>
       )}
 
+      {/* 8. PROJECT GROUP MANAGEMENT */}
+      {activeTab === 'project-groups' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-fade-in">
+          {/* Left Panel: Selector & Metadata */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card title="Select Project Group" subtitle="Choose a project group ID to manage details.">
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-2">Group ID / Lead Student</label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={e => {
+                      const projId = e.target.value;
+                      setSelectedProjectId(projId);
+                      if (projId) {
+                        const proj = adminProjects.find(p => p.id === parseInt(projId));
+                        if (proj) {
+                          setEditingProjectTitle(proj.title || '');
+                          try {
+                            const parsed = proj.group_members ? JSON.parse(proj.group_members) : [];
+                            setEditingProjectMembers(parsed);
+                          } catch (e) {
+                            setEditingProjectMembers([]);
+                          }
+                        }
+                      } else {
+                        setEditingProjectTitle('');
+                        setEditingProjectMembers([]);
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl text-xs focus:outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 transition-colors font-semibold"
+                  >
+                    <option value="" className="bg-white dark:bg-slate-900 text-slate-400">-- Choose Project Group (ID) --</option>
+                    {adminProjects.map(p => (
+                      <option key={p.id} value={p.id} className="bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-100">
+                        {`Group ID: ${p.id} - ${p.title} (Lead: ${p.student_name})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedProjectId && (() => {
+                  const p = adminProjects.find(x => x.id === parseInt(selectedProjectId));
+                  if (!p) return null;
+                  return (
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                      <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">Group Metadata</h4>
+                      <div className="space-y-2 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                        <p className="text-slate-500">Lead Student: <span className="font-bold text-slate-700 dark:text-slate-350">{p.student_name} {p.student_roll ? `(${p.student_roll})` : ''}</span></p>
+                        <p className="text-slate-500">Department: <span className="font-bold text-slate-700 dark:text-slate-355">{p.domain || 'N/A'} ({p.category || 'N/A'})</span></p>
+                        <p className="text-slate-500">Supervisor/Guide: <span className="font-bold text-slate-700 dark:text-slate-355">{p.guide_name || 'Unassigned'}</span></p>
+                        <div className="flex items-center space-x-2 pt-1.5">
+                          <span className="text-[10px] text-sky-500 font-bold bg-sky-500/10 px-2 py-0.5 rounded-full capitalize">{p.difficulty_level}</span>
+                          <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full capitalize">{p.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </Card>
+          </div>
+
+          {/* Right Panel: Edit Details & Team Members */}
+          <div className="lg:col-span-2">
+            {selectedProjectId ? (
+              <form onSubmit={handleUpdateProjectGroup} className="space-y-6">
+                <Card title="Edit Project Details" subtitle={`Manage Group ID: ${selectedProjectId} Title and Team Member List`}>
+                  <div className="space-y-5 text-xs">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-2">Project Group Title</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={editingProjectTitle} 
+                        onChange={e => setEditingProjectTitle(e.target.value)} 
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl text-xs focus:outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 transition-colors font-semibold"
+                        placeholder="Enter Project Title"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase">Team Members List</label>
+                      
+                      {editingProjectMembers.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {editingProjectMembers.map((m, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800/50 rounded-2xl hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                              <div className="space-y-0.5">
+                                <p className="font-extrabold text-slate-850 dark:text-slate-100 text-xs">{m.name}</p>
+                                <p className="text-[10px] text-slate-450 font-semibold">Roll: {m.univ_roll || m.roll_number || 'N/A'}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingProjectMembers(editingProjectMembers.filter((_, i) => i !== idx));
+                                }}
+                                className="p-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-5 border border-dashed rounded-2xl text-center text-slate-400 bg-slate-50/20 dark:bg-slate-900/10">
+                          No team members added yet.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Add Team Member Subform */}
+                    <div className="bg-slate-50/50 dark:bg-slate-800/20 p-5 border border-dashed border-slate-200 dark:border-slate-700/60 rounded-3xl space-y-4 mt-6">
+                      <h5 className="font-bold text-slate-700 dark:text-slate-355 text-xs uppercase tracking-wider">Add New Team Member</h5>
+                      
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Or Select Registered Student</label>
+                        <select
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val) {
+                              const [name, roll] = val.split('|||');
+                              setNewMemberName(name);
+                              setNewMemberRoll(roll);
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 transition-colors font-semibold"
+                          defaultValue=""
+                        >
+                          <option value="">-- Choose Student --</option>
+                          {allStudents
+                            .filter(s => {
+                              // Exclude the project lead student
+                              const p = adminProjects.find(x => x.id === parseInt(selectedProjectId));
+                              if (p && (p.student_name === s.name || p.student_roll === s.roll_number)) return false;
+                              
+                              // Exclude already added team members
+                              const alreadyAdded = editingProjectMembers.some(m => (m.univ_roll || m.roll_number) === s.roll_number);
+                              return !alreadyAdded;
+                            })
+                            .map(s => (
+                              <option key={s.id} value={`${s.name}|||${s.roll_number}`}>
+                                {s.name} ({s.roll_number})
+                              </option>
+                            ))
+                          }
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Member Name</label>
+                          <input 
+                            type="text" 
+                            value={newMemberName} 
+                            onChange={e => setNewMemberName(e.target.value)} 
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 transition-colors font-semibold"
+                            placeholder="e.g. John Doe"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Roll Number</label>
+                          <input 
+                            type="text" 
+                            value={newMemberRoll} 
+                            onChange={e => setNewMemberRoll(e.target.value)} 
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 transition-colors font-semibold"
+                            placeholder="e.g. UNIV-CSE-002"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newMemberName.trim() || !newMemberRoll.trim()) return;
+                          setEditingProjectMembers([
+                            ...editingProjectMembers,
+                            { name: newMemberName.trim(), univ_roll: newMemberRoll.trim(), section: '', contact: '' }
+                          ]);
+                          setNewMemberName('');
+                          setNewMemberRoll('');
+                        }}
+                        disabled={!newMemberName.trim() || !newMemberRoll.trim()}
+                        className="w-full py-2.5 px-4 bg-sky-500/10 hover:bg-sky-500 hover:text-white text-sky-500 rounded-xl font-bold transition-all disabled:opacity-50 text-xs flex items-center justify-center space-x-1.5"
+                      >
+                        <Plus size={14} />
+                        <span>Add Member to List</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t mt-6">
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-6 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-sky-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 text-xs flex items-center justify-center space-x-2"
+                    >
+                      <ShieldCheck size={16} />
+                      <span>Save Project Group Details</span>
+                    </button>
+                  </div>
+                </Card>
+              </form>
+            ) : (
+              <div className="h-64 border border-dashed rounded-3xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/10 dark:bg-slate-900/5 text-xs">
+                <FolderOpen size={36} className="mb-3 text-slate-300" />
+                <p className="font-semibold">Please select a Project Group ID from the left panel to begin editing.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'proposals' && (
+        <div className="space-y-6 animate-fade-in text-xs">
+          <Card title="Academic Project Proposals" subtitle="Monitor project titles and group members entered by students.">
+            {proposals.length === 0 ? (
+              <div className="text-center py-12 border border-dashed rounded-3xl text-slate-500 italic">
+                No project proposals have been submitted yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {proposals.map(prop => (
+                  <div key={prop.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
+                      <div>
+                        <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100">{prop.title}</h3>
+                        <p className="text-slate-400 mt-1 text-[11px]">
+                          Proposed by: <span className="font-bold text-slate-700 dark:text-slate-300">{prop.student_name} ({prop.roll_number})</span> • 
+                          Guide: <span className="font-bold text-slate-700 dark:text-slate-300">{prop.guide_name}</span>
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                        prop.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                        prop.status === 'title_approved' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
+                        prop.status === 'revision_required' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                        'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                      }`}>
+                        {prop.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-bold text-slate-450 uppercase tracking-wider text-[10px] mb-2">Project Group Members</h4>
+                        {prop.members && prop.members.length > 0 ? (
+                          <div className="space-y-2">
+                            {prop.members.map(member => (
+                              <div key={member.id} className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl flex justify-between items-center">
+                                <div>
+                                  <span className="font-bold text-slate-700 dark:text-slate-200 block">{member.name}</span>
+                                  <span className="text-[10px] text-slate-400 block">Roll: {member.roll_number} • Dept: {member.department}</span>
+                                </div>
+                                <span className="bg-slate-250 dark:bg-slate-800 px-2 py-0.5 rounded-lg text-[9px] font-bold text-slate-500">Sec {member.section}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-slate-400 italic">No extra members resolved (Raw list: {prop.team_members || 'Empty'})</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-slate-455 uppercase tracking-wider text-[10px]">Specifications & Documents</h4>
+                        {prop.status === 'approved' || prop.status === 'pending_documents' ? (
+                          <div className="bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/50 rounded-2xl space-y-2">
+                            <p className="text-slate-500">Domain: <span className="font-bold text-slate-700 dark:text-slate-200">{prop.domain || 'N/A'}</span></p>
+                            <p className="text-slate-500">Category: <span className="font-bold text-slate-700 dark:text-slate-200">{prop.category || 'N/A'}</span></p>
+                            {prop.problem_statement && (
+                              <p className="text-slate-500">Problem Statement: <span className="font-bold text-slate-700 dark:text-slate-200 block max-h-16 overflow-y-auto whitespace-pre-wrap">{prop.problem_statement}</span></p>
+                            )}
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {prop.proposal_pdf_url && (
+                                <a href={`http://localhost:8000/${prop.proposal_pdf_url}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-white dark:bg-slate-800 border rounded-lg hover:bg-slate-50 text-[10px] font-bold text-slate-600 dark:text-slate-350 truncate">
+                                  Download PDF
+                                </a>
+                              )}
+                              {prop.synopsis_url && (
+                                <a href={`http://localhost:8000/${prop.synopsis_url}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-white dark:bg-slate-800 border rounded-lg hover:bg-slate-50 text-[10px] font-bold text-slate-600 dark:text-slate-350 truncate">
+                                  Synopsis
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-center text-slate-400 italic">
+                            Other specifications and documents will be entered after title approval.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* EDIT STUDENT DIALOG */}
       {editingStudent && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
@@ -1652,16 +1995,34 @@ const AdminDashboard = () => {
             <p className="text-slate-450 text-[10px] mb-4">Supported formats: Excel (.xlsx), CSV (.csv). Ensure headers match name, email, roll, class details.</p>
             
             <form onSubmit={handleBulkUpload} className="space-y-4">
-              <input
-                required
-                type="file"
-                accept=".csv, .xlsx"
-                onChange={e => setUploadFile(e.target.files[0])}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border rounded-xl border-dashed cursor-pointer"
-              />
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Department (Fallback if missing in sheet)</label>
+                <select
+                  value={uploadDeptId}
+                  onChange={e => setUploadDeptId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
+                >
+                  <option value="">Auto-Detect / CSE Default</option>
+                  {orgDetails.departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Select Sheet File</label>
+                <input
+                  required
+                  type="file"
+                  accept=".csv, .xlsx"
+                  onChange={e => setUploadFile(e.target.files[0])}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border rounded-xl border-dashed cursor-pointer"
+                />
+              </div>
               {uploadSummary && (
                 <div className="p-4 bg-slate-50 dark:bg-slate-950 border rounded-2xl text-[11px] font-mono leading-relaxed space-y-1">
-                  <span className="block text-emerald-500 font-bold">{uploadSummary.imported} Students Imported</span>
+                  <span className="block text-emerald-500 font-extrabold text-xs pb-1.5 border-b mb-1.5">✓ Records successfully imported!</span>
+                  <span className="block text-emerald-600 font-bold">{uploadSummary.imported} Students Imported</span>
                   <span className="block text-amber-500 font-bold">{uploadSummary.duplicates} Duplicate Records Bypassed</span>
                   <span className="block text-rose-500 font-bold">{uploadSummary.invalid} Invalid Records Bypassed</span>
                 </div>

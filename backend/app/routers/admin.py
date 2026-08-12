@@ -244,6 +244,23 @@ def list_all_projects(status: Optional[str] = None, db: Session = Depends(get_db
             "difficulty_level": p.difficulty_level,
             "status": p.status,
             "student_name": p.student.user.name if p.student else "Unknown",
-            "guide_name": p.student.guide.user.name if p.student and p.student.guide else "Unassigned"
+            "student_roll": p.student.roll_number if p.student else "",
+            "student_id": p.student.id if p.student else None,
+            "guide_name": p.student.guide.user.name if p.student and p.student.guide else "Unassigned",
+            "group_members": p.group_members
         })
     return res
+
+@router.put("/projects/{project_id}")
+def admin_update_project(project_id: int, project_in: schemas.ProjectUpdate, db: Session = Depends(get_db)):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    for field, val in project_in.model_dump(exclude_unset=True).items():
+        setattr(project, field, val)
+        
+    db.commit()
+    db.refresh(project)
+    return project
+
