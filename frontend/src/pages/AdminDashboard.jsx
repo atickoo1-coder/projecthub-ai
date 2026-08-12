@@ -141,6 +141,9 @@ const AdminDashboard = () => {
   const [uploadSummary, setUploadSummary] = useState(null);
   const [uploadDeptId, setUploadDeptId] = useState('');
   const [createdCredentials, setCreatedCredentials] = useState(null);
+  const [selectedProposalDept, setSelectedProposalDept] = useState('All');
+  const [selectedProposalId, setSelectedProposalId] = useState(null);
+  const [proposalSearchQuery, setProposalSearchQuery] = useState('');
 
   // Allocation Forms
   const [manualAllocForm, setManualAllocForm] = useState({ student_id: '', teacher_id: '' });
@@ -1769,91 +1772,219 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {activeTab === 'proposals' && (
-        <div className="space-y-6 animate-fade-in text-xs">
-          <Card title="Academic Project Proposals" subtitle="Monitor project titles and group members entered by students.">
-            {proposals.length === 0 ? (
-              <div className="text-center py-12 border border-dashed rounded-3xl text-slate-500 italic">
-                No project proposals have been submitted yet.
+      {activeTab === 'proposals' && (() => {
+        // Grouping & Filtering Logic
+        const getProposalCountForDept = (dept) => {
+          if (dept === 'All') return proposals.length;
+          return proposals.filter(p => p.student_dept === dept).length;
+        };
+
+        const uniqueDepts = ['All', ...new Set(proposals.map(p => p.student_dept).filter(Boolean))];
+        
+        const filteredProps = proposals.filter(p => {
+          const matchesDept = selectedProposalDept === 'All' || p.student_dept === selectedProposalDept;
+          const matchesSearch = !proposalSearchQuery || 
+            p.student_name?.toLowerCase().includes(proposalSearchQuery.toLowerCase()) ||
+            p.roll_number?.toLowerCase().includes(proposalSearchQuery.toLowerCase()) ||
+            p.title?.toLowerCase().includes(proposalSearchQuery.toLowerCase());
+          return matchesDept && matchesSearch;
+        });
+
+        const activeProposal = filteredProps.find(p => p.id === selectedProposalId) || filteredProps[0] || null;
+
+        return (
+          <div className="space-y-6 animate-fade-in text-xs">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Academic Project Proposals</h2>
+                <p className="text-slate-450 text-[11px] mt-0.5">Monitor and evaluate student project proposals grouped by department and student lists.</p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {proposals.map(prop => (
-                  <div key={prop.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                    <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
-                      <div>
-                        <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100">{prop.title}</h3>
-                        <p className="text-slate-400 mt-1 text-[11px]">
-                          Proposed by: <span className="font-bold text-slate-700 dark:text-slate-300">{prop.student_name} ({prop.roll_number})</span> • 
-                          Guide: <span className="font-bold text-slate-700 dark:text-slate-300">{prop.guide_name}</span>
-                        </p>
-                      </div>
-                      <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                        prop.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                        prop.status === 'title_approved' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
-                        prop.status === 'revision_required' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                        'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                      }`}>
-                        {prop.status.replace('_', ' ')}
-                      </span>
-                    </div>
+            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-bold text-slate-450 uppercase tracking-wider text-[10px] mb-2">Project Group Members</h4>
-                        {prop.members && prop.members.length > 0 ? (
-                          <div className="space-y-2">
-                            {prop.members.map(member => (
-                              <div key={member.id} className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-750 rounded-2xl flex justify-between items-center">
-                                <div>
-                                  <span className="font-bold text-slate-700 dark:text-slate-200 block">{member.name}</span>
-                                  <span className="text-[10px] text-slate-400 block">Roll: {member.roll_number} • Dept: {member.department}</span>
-                                </div>
-                                <span className="bg-slate-250 dark:bg-slate-800 px-2 py-0.5 rounded-lg text-[9px] font-bold text-slate-500">Sec {member.section}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-slate-400 italic">No extra members resolved (Raw list: {prop.team_members || 'Empty'})</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-3">
-                        <h4 className="font-bold text-slate-455 uppercase tracking-wider text-[10px]">Specifications & Documents</h4>
-                        {prop.status === 'approved' || prop.status === 'pending_documents' ? (
-                          <div className="bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/50 rounded-2xl space-y-2">
-                            <p className="text-slate-500">Domain: <span className="font-bold text-slate-700 dark:text-slate-200">{prop.domain || 'N/A'}</span></p>
-                            <p className="text-slate-500">Category: <span className="font-bold text-slate-700 dark:text-slate-200">{prop.category || 'N/A'}</span></p>
-                            {prop.problem_statement && (
-                              <p className="text-slate-500">Problem Statement: <span className="font-bold text-slate-700 dark:text-slate-200 block max-h-16 overflow-y-auto whitespace-pre-wrap">{prop.problem_statement}</span></p>
-                            )}
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {prop.proposal_pdf_url && (
-                                <a href={`http://localhost:8000/${prop.proposal_pdf_url}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-white dark:bg-slate-800 border rounded-lg hover:bg-slate-50 text-[10px] font-bold text-slate-600 dark:text-slate-350 truncate">
-                                  Download PDF
-                                </a>
-                              )}
-                              {prop.synopsis_url && (
-                                <a href={`http://localhost:8000/${prop.synopsis_url}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-white dark:bg-slate-800 border rounded-lg hover:bg-slate-50 text-[10px] font-bold text-slate-600 dark:text-slate-350 truncate">
-                                  Synopsis
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-center text-slate-400 italic">
-                            Other specifications and documents will be entered after title approval.
-                          </div>
-                        )}
-                      </div>
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+              {/* Panel 1: Department Sidebar (1 col) */}
+              <div className="lg:col-span-1 space-y-4">
+                <Card title="Departments" subtitle="Filter proposals by branch">
+                  <div className="space-y-1">
+                    {uniqueDepts.map(dept => {
+                      const count = getProposalCountForDept(dept);
+                      const isActive = selectedProposalDept === dept;
+                      return (
+                        <button
+                          key={dept}
+                          type="button"
+                          onClick={() => {
+                            setSelectedProposalDept(dept);
+                            setSelectedProposalId(null); // Reset active student selection
+                          }}
+                          className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl font-bold transition-all text-left ${
+                            isActive
+                              ? 'bg-sky-500 text-white shadow-md shadow-sky-500/10'
+                              : 'bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <span>{dept === 'All' ? 'All Departments' : dept}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
+                </Card>
               </div>
-            )}
-          </Card>
-        </div>
-      )}
+
+              {/* Panel 2: Student Master List (1 col) */}
+              <div className="lg:col-span-1 space-y-4">
+                <Card title="Students" subtitle="Select student to inspect">
+                  <div className="space-y-3">
+                    {/* Search box */}
+                    <input
+                      type="text"
+                      value={proposalSearchQuery}
+                      onChange={e => setProposalSearchQuery(e.target.value)}
+                      placeholder="Search by student or roll..."
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 font-semibold"
+                    />
+
+                    {filteredProps.length === 0 ? (
+                      <p className="text-slate-450 italic text-center py-6">No proposals match filters.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                        {filteredProps.map(prop => {
+                          const isActive = activeProposal?.id === prop.id;
+                          return (
+                            <button
+                              key={prop.id}
+                              type="button"
+                              onClick={() => setSelectedProposalId(prop.id)}
+                              className={`w-full p-3.5 rounded-2xl border text-left transition-all space-y-1.5 ${
+                                isActive
+                                  ? 'bg-indigo-500 border-indigo-600 text-white shadow-md shadow-indigo-500/10'
+                                  : 'bg-slate-50 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800/50 hover:border-slate-350 dark:hover:border-slate-750 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <span className="font-extrabold text-xs block truncate max-w-[130px]">{prop.student_name}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide ${
+                                  isActive 
+                                    ? 'bg-white/20 text-white' 
+                                    : prop.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                                    : prop.status === 'title_approved' ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20' 
+                                    : 'bg-sky-500/10 text-sky-500 border border-sky-500/20'
+                                }`}>
+                                  {prop.status === 'revision_required' ? 'rev' : prop.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                              <span className={`text-[10px] block font-semibold ${isActive ? 'text-white/80' : 'text-slate-450'}`}>
+                                {prop.roll_number}
+                              </span>
+                              <span className={`text-[10px] block font-medium line-clamp-1 italic ${isActive ? 'text-white/80' : 'text-slate-400'}`}>
+                                {prop.title}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Panel 3: Active Proposal Details (2 cols) */}
+              <div className="lg:col-span-2 space-y-4">
+                {activeProposal ? (
+                  <Card title="Proposal Details" subtitle={`Group ID: ${activeProposal.id} • Submitted by Lead Student`}>
+                    <div className="space-y-6 text-xs">
+                      {/* Header: Title and Status */}
+                      <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 flex justify-between items-start gap-4">
+                        <div>
+                          <h3 className="font-extrabold text-base text-slate-850 dark:text-slate-100 leading-snug">{activeProposal.title}</h3>
+                          <p className="text-slate-450 mt-1 text-[11px] font-semibold">
+                            Lead: <span className="text-slate-700 dark:text-slate-350">{activeProposal.student_name} ({activeProposal.roll_number})</span> • Dept: <span className="text-slate-700 dark:text-slate-350">{activeProposal.student_dept}</span>
+                          </p>
+                          <p className="text-slate-400 text-[10px] mt-0.5">
+                            Assigned Guide: <span className="font-bold text-slate-500 dark:text-slate-450">{activeProposal.guide_name}</span>
+                          </p>
+                        </div>
+                        <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
+                          activeProposal.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          activeProposal.status === 'title_approved' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
+                          activeProposal.status === 'revision_required' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                        }`}>
+                          {activeProposal.status.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        {/* Left: Group Members */}
+                        <div className="space-y-3">
+                          <h4 className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Project Group Members</h4>
+                          {activeProposal.members && activeProposal.members.length > 0 ? (
+                            <div className="space-y-2">
+                              {activeProposal.members.map(member => (
+                                <div key={member.id} className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl flex justify-between items-center hover:border-slate-350 dark:hover:border-slate-700 transition-colors">
+                                  <div>
+                                    <span className="font-bold text-slate-750 dark:text-slate-200 block">{member.name}</span>
+                                    <span className="text-[10px] text-slate-450 block">Roll: {member.roll_number} • Dept: {member.department}</span>
+                                  </div>
+                                  <span className="bg-slate-200/55 dark:bg-slate-800 px-2 py-0.5 rounded-lg text-[9px] font-bold text-slate-500">Sec {member.section}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-slate-400 italic">No extra members resolved (Raw list: {activeProposal.team_members || 'Empty'})</p>
+                          )}
+                        </div>
+
+                        {/* Right: Specifications & Deliverables */}
+                        <div className="space-y-3">
+                          <h4 className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Specifications & Documents</h4>
+                          {activeProposal.status === 'approved' || activeProposal.status === 'pending_documents' ? (
+                            <div className="bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/50 rounded-2xl space-y-2.5">
+                              <p className="text-slate-500 font-semibold">Domain: <span className="font-extrabold text-slate-750 dark:text-slate-200">{activeProposal.domain || 'N/A'}</span></p>
+                              <p className="text-slate-500 font-semibold">Category: <span className="font-extrabold text-slate-750 dark:text-slate-200">{activeProposal.category || 'N/A'}</span></p>
+                              {activeProposal.problem_statement && (
+                                <div className="space-y-0.5">
+                                  <span className="text-slate-455 text-[9px] font-bold uppercase block">Problem Statement:</span>
+                                  <span className="font-bold text-slate-700 dark:text-slate-250 block max-h-16 overflow-y-auto whitespace-pre-wrap">{activeProposal.problem_statement}</span>
+                                </div>
+                              )}
+                              <div className="flex flex-wrap gap-2 pt-2 border-t dark:border-slate-800 mt-2">
+                                {activeProposal.proposal_pdf_url && (
+                                  <a href={`http://localhost:8000/${activeProposal.proposal_pdf_url}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 text-[10px] font-bold text-slate-600 dark:text-slate-350">
+                                    Download PDF
+                                  </a>
+                                )}
+                                {activeProposal.synopsis_url && (
+                                  <a href={`http://localhost:8000/${activeProposal.synopsis_url}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 text-[10px] font-bold text-slate-600 dark:text-slate-350">
+                                    Synopsis
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-5 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-center text-slate-400 italic font-semibold bg-slate-50/50 dark:bg-slate-800/10">
+                              ⚙️ Other specifications and synopsis documents will be unlocked and entered after title stage approval.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="text-center py-12 border border-dashed rounded-3xl text-slate-500 italic font-semibold">
+                    Select a student proposal from the middle column to inspect details.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* EDIT STUDENT DIALOG */}
       {editingStudent && (

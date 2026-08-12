@@ -434,6 +434,7 @@ def get_all_proposals(payload: dict = Depends(get_current_user_payload), db: Ses
             "initial_diagram_url": p.initial_diagram_url,
             "status": p.status,
             "guide_name": p.student.guide.user.name if p.student and p.student.guide else "Unassigned",
+            "student_dept": p.student.department.code if p.student and p.student.department else "Unassigned",
             "team_members": p.team_members,
             "members": members
         })
