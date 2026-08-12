@@ -631,7 +631,7 @@ const AdminDashboard = () => {
           <h2 className="text-3xl font-extrabold tracking-tight">University Control Center</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage global system parameters, departments, student registers, and academic guides.</p>
         </div>
-        <button onClick={triggerReset} className="p-3 bg-white dark:bg-slate-900 border hover:bg-slate-50 dark:hover:bg-slate-850 rounded-2xl shadow-sm text-sky-500 transition-all">
+        <button onClick={triggerReset} className="p-3 bg-white dark:bg-slate-900 border hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl shadow-sm text-sky-500 transition-all">
           <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
         </button>
       </div>
@@ -1046,7 +1046,7 @@ const AdminDashboard = () => {
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800">
                   {students.length === 0 ? (
                     <tr><td colSpan={7} className="text-center py-6 text-slate-500 italic">No student records found.</td></tr>
                   ) : (
@@ -1195,7 +1195,7 @@ const AdminDashboard = () => {
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800">
                   {teachers.map(t => (
                     <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
                       <td className="py-3 px-4">
@@ -1250,7 +1250,7 @@ const AdminDashboard = () => {
                     <th className="py-3 px-4">Pending Abstract Evaluations</th>
                   </tr>
                 </thead>
-                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+                <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800">
                   {workloads.map(wl => (
                     <tr key={wl.id} className={`hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors ${wl.is_overloaded ? 'bg-rose-500/5 text-rose-500' : ''}`}>
                       <td className="py-3 px-4">
@@ -1591,7 +1591,7 @@ const AdminDashboard = () => {
                   >
                     <option value="" className="bg-white dark:bg-slate-900 text-slate-400">-- Choose Project Group (ID) --</option>
                     {adminProjects.map(p => (
-                      <option key={p.id} value={p.id} className="bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-100">
+                      <option key={p.id} value={p.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                         {`Group ID: ${p.id} - ${p.title} (Lead: ${p.student_name})`}
                       </option>
                     ))}
@@ -1644,9 +1644,9 @@ const AdminDashboard = () => {
                       {editingProjectMembers.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {editingProjectMembers.map((m, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800/50 rounded-2xl hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                            <div key={idx} className="flex justify-between items-center p-4 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-2xl hover:border-slate-350 dark:hover:border-slate-650 transition-all">
                               <div className="space-y-0.5">
-                                <p className="font-extrabold text-slate-850 dark:text-slate-100 text-xs">{m.name}</p>
+                                <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">{m.name}</p>
                                 <p className="text-[10px] text-slate-450 font-semibold">Roll: {m.univ_roll || m.roll_number || 'N/A'}</p>
                               </div>
                               <button
@@ -1779,7 +1779,7 @@ const AdminDashboard = () => {
             ) : (
               <div className="grid grid-cols-1 gap-6">
                 {proposals.map(prop => (
-                  <div key={prop.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                  <div key={prop.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
                     <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
                       <div>
                         <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100">{prop.title}</h3>
@@ -1804,7 +1804,7 @@ const AdminDashboard = () => {
                         {prop.members && prop.members.length > 0 ? (
                           <div className="space-y-2">
                             {prop.members.map(member => (
-                              <div key={member.id} className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl flex justify-between items-center">
+                              <div key={member.id} className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-750 rounded-2xl flex justify-between items-center">
                                 <div>
                                   <span className="font-bold text-slate-700 dark:text-slate-200 block">{member.name}</span>
                                   <span className="text-[10px] text-slate-400 block">Roll: {member.roll_number} • Dept: {member.department}</span>
