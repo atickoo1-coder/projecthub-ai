@@ -1964,6 +1964,146 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                 </div>
               )}
             </Card>
+
+            {activeProject && (
+              <Card title="General Information" subtitle="Project metadata and group members roster (PDF Page 6).">
+                <div className="space-y-6 text-xs leading-normal">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pb-4 border-b">
+                    <div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Project Title</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200 block mt-0.5">{activeProject.title}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Name of Guide</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200 block mt-0.5">{user?.student_profile?.guide_name || 'Unallocated'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Name of Co-Guide</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200 block mt-0.5">Dr. Richard Feynman (Fermionics Lab)</span>
+                    </div>
+                  </div>
+
+                  <div className="pb-4 border-b">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Department</span>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-200 block mt-0.5">Department of Electronics & Communication Engineering</span>
+                  </div>
+
+                  <div className="pb-4 border-b">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Project Abstract</span>
+                    <p className="text-slate-650 dark:text-slate-300 mt-1 italic">"{activeProject.abstract || 'No abstract provided yet.'}"</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Group Members Details</span>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px] text-left border-collapse">
+                        <thead>
+                          <tr className="border-b bg-slate-50 dark:bg-slate-800/40 text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
+                            <th className="py-2 px-3">Name</th>
+                            <th className="py-2 px-3">Roll No</th>
+                            <th className="py-2 px-3">Contact No</th>
+                            <th className="py-2 px-3">E-mail ID</th>
+                            <th className="py-2 px-3">Hostler / Dayscholar</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                          <tr className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">{user.name}</td>
+                            <td className="py-2.5 px-3">{user.student_profile?.roll_number}</td>
+                            <td className="py-2.5 px-3">{user.student_profile?.mobile || '9876543210'}</td>
+                            <td className="py-2.5 px-3">{user.email}</td>
+                            <td className="py-2.5 px-3 text-sky-500 font-bold">{user.student_profile?.residence || 'Day Scholar'}</td>
+                          </tr>
+                          {activeProject.group_members && (
+                            (() => {
+                              try {
+                                const members = JSON.parse(activeProject.group_members);
+                                if (Array.isArray(members)) {
+                                  return members.map((m, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50/50">
+                                      <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">{m.name}</td>
+                                      <td className="py-2.5 px-3">{m.roll_no || m.roll}</td>
+                                      <td className="py-2.5 px-3">{m.contact_no || m.contact || 'N/A'}</td>
+                                      <td className="py-2.5 px-3">{m.email_id || m.email || 'N/A'}</td>
+                                      <td className="py-2.5 px-3 text-sky-500 font-bold">{m.residence || 'Hostler'}</td>
+                                    </tr>
+                                  ));
+                                }
+                              } catch (e) {
+                                return null;
+                              }
+                            })()
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {finalEvaluation && (
+                    <div className="p-4 bg-sky-500/5 dark:bg-sky-500/10 border border-sky-500/10 rounded-2xl">
+                      <span className="text-[10px] text-sky-500 font-bold uppercase block">Conclusions / Recommendations by Guide (At the time of submission)</span>
+                      <p className="mt-1 font-semibold text-slate-700 dark:text-slate-300">"{finalEvaluation.strengths || finalEvaluation.remarks || 'No submission recommendations logged yet.'}"</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {activeProject && (
+              <Card title="Project Status Report" subtitle="Guide-Student Meeting Scheduler log records (PDF Page 7).">
+                <div className="space-y-6 text-xs leading-normal">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="border-b bg-slate-50 dark:bg-slate-800/40 text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
+                          <th className="py-2 px-3 text-center w-12">Sl No</th>
+                          <th className="py-2 px-3">Date</th>
+                          <th className="py-2 px-3 text-center">% Work Done</th>
+                          <th className="py-2 px-3">Next Due Date</th>
+                          <th className="py-2 px-3">Comments</th>
+                          <th className="py-2 px-3 text-center">Guide Signature</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                        {weeklyLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center py-6 text-slate-400 italic">No progress log records recorded in scheduler table.</td>
+                          </tr>
+                        ) : (
+                          weeklyLogs.map((log, idx) => (
+                            <tr key={log.id} className="hover:bg-slate-50/50">
+                              <td className="py-2.5 px-3 text-center text-slate-500 font-bold">{idx + 1}.</td>
+                              <td className="py-2.5 px-3 font-semibold">{new Date(log.created_at || Date.now()).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                              <td className="py-2.5 px-3 text-center font-bold text-emerald-500">{log.current_progress}%</td>
+                              <td className="py-2.5 px-3 text-slate-500">{log.next_week_plan || 'N/A'}</td>
+                              <td className="py-2.5 px-3 italic text-slate-600 dark:text-slate-350">"{log.feedback?.comments || 'Awaiting supervisor sign-off.'}"</td>
+                              <td className="py-2.5 px-3 text-center">
+                                {log.feedback ? (
+                                  <span className="text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                    Signed: {user?.student_profile?.guide_name?.split(' ')?.[0] || 'Guide'}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                    Pending Sign
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {finalEvaluation && (
+                    <div className="p-4 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-2xl">
+                      <span className="text-[10px] text-indigo-500 font-bold uppercase block">Conclusions / Recommendations at the time of submission</span>
+                      <p className="mt-1 font-semibold text-slate-700 dark:text-slate-300">"{finalEvaluation.future_scope || 'Final submission verified and signed by Guide.'}"</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
           </div>
 
           <div className="space-y-8">

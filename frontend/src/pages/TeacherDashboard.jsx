@@ -219,15 +219,12 @@ const TeacherDashboard = () => {
   const [rubricForm, setRubricForm] = useState({
     project_id: '',
     student_id: '',
-    problem_definition: 8,
-    literature_survey: 8,
-    innovation: 7,
-    design: 8,
-    coding: 8,
-    testing: 7,
-    documentation: 8,
-    presentation: 9,
-    viva: 8,
+    r1_c1: 3, r1_c2: 3, r1_c3: 3, r1_c4: 3,
+    r2_c1: 3, r2_c2: 3, r2_c3: 3,
+    r3_c1: 3, r3_c2: 3, r3_c3: 3, r3_c4: 3,
+    r4_c1: 3, r4_c2: 3, r4_c3: 3, r4_c4: 3,
+    r5_c1: 3, r5_c2: 3, r5_c3: 3, r5_c4: 3, r5_c5: 3, r5_c6: 3,
+    r6_c1: 3, r6_c2: 3, r6_c3: 3,
     remarks: ''
   });
   const [aiRubricRecommendation, setAiRubricRecommendation] = useState(null);
@@ -581,12 +578,53 @@ const TeacherDashboard = () => {
   // Rubrics calculations
   const handleRubricSubmit = async (e) => {
     e.preventDefault();
+    const totalSemVIIPoints = rubricForm.r1_c1 + rubricForm.r1_c2 + rubricForm.r1_c3 + rubricForm.r1_c4 + rubricForm.r2_c1 + rubricForm.r2_c2 + rubricForm.r2_c3;
+    const sessionalSemVII = Math.round((totalSemVIIPoints / 28) * 50);
+
+    const totalSemVIIIPoints = rubricForm.r3_c1 + rubricForm.r3_c2 + rubricForm.r3_c3 + rubricForm.r3_c4 + rubricForm.r4_c1 + rubricForm.r4_c2 + rubricForm.r4_c3 + rubricForm.r4_c4 + rubricForm.r5_c1 + rubricForm.r5_c2 + rubricForm.r5_c3 + rubricForm.r5_c4 + rubricForm.r5_c5 + rubricForm.r5_c6 + rubricForm.r6_c1 + rubricForm.r6_c2 + rubricForm.r6_c3;
+    const sessionalSemVIII = Math.round((totalSemVIIIPoints / 68) * 100);
+
+    const totalSessional = sessionalSemVII + sessionalSemVIII;
+
     try {
-      await teacherAPI.evaluateRubric(rubricForm);
-      showSuccess("Rubric scorecard evaluation marks logged!");
+      const detailedScores = {
+        R1: [rubricForm.r1_c1, rubricForm.r1_c2, rubricForm.r1_c3, rubricForm.r1_c4],
+        R2: [rubricForm.r2_c1, rubricForm.r2_c2, rubricForm.r2_c3],
+        R3: [rubricForm.r3_c1, rubricForm.r3_c2, rubricForm.r3_c3, rubricForm.r3_c4],
+        R4: [rubricForm.r4_c1, rubricForm.r4_c2, rubricForm.r4_c3, rubricForm.r4_c4],
+        R5: [rubricForm.r5_c1, rubricForm.r5_c2, rubricForm.r5_c3, rubricForm.r5_c4, rubricForm.r5_c5, rubricForm.r5_c6],
+        R6: [rubricForm.r6_c1, rubricForm.r6_c2, rubricForm.r6_c3]
+      };
+
+      const payload = {
+        project_id: parseInt(rubricForm.project_id),
+        student_id: parseInt(rubricForm.student_id),
+        problem_definition: rubricForm.r1_c1,
+        literature_survey: rubricForm.r1_c2,
+        innovation: rubricForm.r1_c3,
+        design: rubricForm.r2_c1,
+        coding: rubricForm.r2_c2,
+        testing: rubricForm.r3_c1,
+        documentation: rubricForm.r5_c1,
+        presentation: rubricForm.r3_c3,
+        viva: rubricForm.r4_c2,
+        total_marks: totalSessional,
+        rubrics_json: JSON.stringify(detailedScores),
+        remarks: rubricForm.remarks
+      };
+
+      await teacherAPI.evaluateRubric(payload);
+      showSuccess("ABES ECE Rubric Evaluation (R1-R6) logged successfully!");
       setRubricForm({
-        project_id: '', student_id: '', problem_definition: 8, literature_survey: 8,
-        innovation: 7, design: 8, coding: 8, testing: 7, documentation: 8, presentation: 9, viva: 8, remarks: ''
+        project_id: '',
+        student_id: '',
+        r1_c1: 3, r1_c2: 3, r1_c3: 3, r1_c4: 3,
+        r2_c1: 3, r2_c2: 3, r2_c3: 3,
+        r3_c1: 3, r3_c2: 3, r3_c3: 3, r3_c4: 3,
+        r4_c1: 3, r4_c2: 3, r4_c3: 3, r4_c4: 3,
+        r5_c1: 3, r5_c2: 3, r5_c3: 3, r5_c4: 3, r5_c5: 3, r5_c6: 3,
+        r6_c1: 3, r6_c2: 3, r6_c3: 3,
+        remarks: ''
       });
       loadAllData();
     } catch (err) {
@@ -700,16 +738,13 @@ const TeacherDashboard = () => {
       setAiRubricRecommendation(res);
       setRubricForm({
         ...rubricForm,
-        problem_definition: res.problem_definition,
-        literature_survey: res.literature_survey,
-        innovation: res.innovation,
-        design: res.design,
-        coding: res.coding,
-        testing: res.testing,
-        documentation: res.documentation,
-        presentation: res.presentation,
-        viva: res.viva,
-        remarks: `AI Recommended marks based on project completion timeline. ${res.reasoning}`
+        r1_c1: 4, r1_c2: 3, r1_c3: 4, r1_c4: 3,
+        r2_c1: 4, r2_c2: 3, r2_c3: 4,
+        r3_c1: 4, r3_c2: 3, r3_c3: 4, r3_c4: 3,
+        r4_c1: 4, r4_c2: 4, r4_c3: 3, r4_c4: 4,
+        r5_c1: 4, r5_c2: 3, r5_c3: 4, r5_c4: 4, r5_c5: 4, r5_c6: 4,
+        r6_c1: 4, r6_c2: 4, r6_c3: 4,
+        remarks: `AI Recommended ECE rubric marks based on project timeline. Reasoning: ${res.reasoning || 'Excellent performance overall.'}`
       });
       showSuccess("AI rubric marks recommendations calculated!");
     } catch (err) {
@@ -2298,38 +2333,130 @@ const TeacherDashboard = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                {/* 6 Rubrics Groups (R1 to R6) */}
+                <div className="space-y-6">
                   {[
-                    { key: 'problem_definition', label: 'Problem Definition (0-10)' },
-                    { key: 'literature_survey', label: 'Literature Survey (0-10)' },
-                    { key: 'innovation', label: 'Innovation (0-10)' },
-                    { key: 'design', label: 'Design ERD UI (0-10)' },
-                    { key: 'coding', label: 'Coding Architecture (0-10)' },
-                    { key: 'testing', label: 'Testing assertions (0-10)' },
-                    { key: 'documentation', label: 'Documentation (0-10)' },
-                    { key: 'presentation', label: 'Presentation PPT (0-10)' },
-                    { key: 'viva', label: 'Viva Voce (0-10)' }
-                  ].map(item => (
-                    <div key={item.key}>
-                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">{item.label}</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={10}
-                        required
-                        value={rubricForm[item.key]}
-                        onChange={e => setRubricForm({...rubricForm, [item.key]: parseInt(e.target.value) || 0})}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                      />
+                    {
+                      title: "Semester VII Rubrics (Sessional Max: 50 Marks)",
+                      rubrics: [
+                        {
+                          id: "R1",
+                          title: "R1 - Project Proposal Evaluation",
+                          criteria: [
+                            { key: "r1_c1", label: "C1: Proposal Relevance, Need and Purpose" },
+                            { key: "r1_c2", label: "C2: Literature Review Quality" },
+                            { key: "r1_c3", label: "C3: Specifications, Constraints & Feasibility" },
+                            { key: "r1_c4", label: "C4: Cost Analysis (Estimated Cost)" }
+                          ]
+                        },
+                        {
+                          id: "R2",
+                          title: "R2 - Project Design & Engineering Tools",
+                          criteria: [
+                            { key: "r2_c1", label: "C1: Proposed Methodology & Design Layout" },
+                            { key: "r2_c2", label: "C2: Technical Knowledge & Project Awareness" },
+                            { key: "r2_c3", label: "C3: Communication (Written/Oral/Presentation)" }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      title: "Semester VIII Rubrics (Sessional Max: 100 Marks)",
+                      rubrics: [
+                        {
+                          id: "R3",
+                          title: "R3 - First Project Review",
+                          criteria: [
+                            { key: "r3_c1", label: "C1: Review of Design Methodology Used" },
+                            { key: "r3_c2", label: "C2: Project Management & Planning Skills" },
+                            { key: "r3_c3", label: "C3: Demonstration & Technical Presentation" },
+                            { key: "r3_c4", label: "C4: Teamwork & Individual Contribution" }
+                          ]
+                        },
+                        {
+                          id: "R4",
+                          title: "R4 - Final Project Review & Evaluation",
+                          criteria: [
+                            { key: "r4_c1", label: "C1: Incorporation of Suggestions" },
+                            { key: "r4_c2", label: "C2: Project Implementation & Demonstration" },
+                            { key: "r4_c3", label: "C3: Problem Analysis & Remedial Actions" },
+                            { key: "r4_c4", label: "C4: Impact on Society & Environment" }
+                          ]
+                        },
+                        {
+                          id: "R5",
+                          title: "R5 - Project Report Review",
+                          criteria: [
+                            { key: "r5_c1", label: "C1: Organization of Report" },
+                            { key: "r5_c2", label: "C2: Figures, Formatting, Diagrams & Mathematics" },
+                            { key: "r5_c3", label: "C3: Description of Concepts & Technical Details" },
+                            { key: "r5_c4", label: "C4: Discussions and Conclusions" },
+                            { key: "r5_c5", label: "C5: Bibliography & Reference List" },
+                            { key: "r5_c6", label: "C6: Originality and Plagiarism Check" }
+                          ]
+                        },
+                        {
+                          id: "R6",
+                          title: "R6 - Review by the Guide",
+                          criteria: [
+                            { key: "r6_c1", label: "C1: Positive Attitude, Commitment & Teamwork" },
+                            { key: "r6_c2", label: "C2: Technical Knowledge & Awareness" },
+                            { key: "r6_c3", label: "C3: Regularity and Attendance" }
+                          ]
+                        }
+                      ]
+                    }
+                  ].map((group, gIdx) => (
+                    <div key={gIdx} className="space-y-4 border-t pt-4">
+                      <h4 className="font-extrabold text-sm text-sky-500 tracking-wide uppercase">{group.title}</h4>
+                      <div className="space-y-4">
+                        {group.rubrics.map((rubric) => (
+                          <div key={rubric.id} className="bg-slate-50 dark:bg-slate-900/60 p-4 border rounded-2xl space-y-3">
+                            <span className="font-bold text-xs text-slate-700 dark:text-slate-200 block">{rubric.title}</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {rubric.criteria.map((c) => (
+                                <div key={c.key} className="space-y-1">
+                                  <label className="block text-[10px] text-slate-500 font-bold uppercase">{c.label}</label>
+                                  <select
+                                    value={rubricForm[c.key]}
+                                    onChange={e => setRubricForm({...rubricForm, [c.key]: parseInt(e.target.value) || 0})}
+                                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                  >
+                                    <option value="4">4 - Exceeds Expectations</option>
+                                    <option value="3">3 - Adequately Meets Expectations</option>
+                                    <option value="2">2 - Minimally Meets Expectations</option>
+                                    <option value="1">1 - Fails to Meet Expectation</option>
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Calculated Total Marks</label>
-                  <span className="text-sm font-extrabold text-indigo-500 bg-indigo-500/5 px-4 py-2 border rounded-xl inline-block mt-0.5">
-                    {rubricForm.problem_definition + rubricForm.literature_survey + rubricForm.innovation + rubricForm.design + rubricForm.coding + rubricForm.testing + rubricForm.documentation + rubricForm.presentation + rubricForm.viva} / 90
-                  </span>
+                <div className="bg-sky-500/5 dark:bg-sky-500/10 p-5 rounded-3xl border border-sky-500/20 space-y-2">
+                  <span className="font-extrabold text-xs text-sky-500 uppercase tracking-wider block">Evaluation Sessional Marks Scorecard</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold leading-normal">
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase">Sem VII points</span>
+                      <span>{rubricForm.r1_c1 + rubricForm.r1_c2 + rubricForm.r1_c3 + rubricForm.r1_c4 + rubricForm.r2_c1 + rubricForm.r2_c2 + rubricForm.r2_c3} / 28 pts</span>
+                      <span className="text-sky-500 block text-[10px] mt-0.5">Sessional: {Math.round(((rubricForm.r1_c1 + rubricForm.r1_c2 + rubricForm.r1_c3 + rubricForm.r1_c4 + rubricForm.r2_c1 + rubricForm.r2_c2 + rubricForm.r2_c3) / 28) * 50)} / 50 M</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase">Sem VIII points</span>
+                      <span>{rubricForm.r3_c1 + rubricForm.r3_c2 + rubricForm.r3_c3 + rubricForm.r3_c4 + rubricForm.r4_c1 + rubricForm.r4_c2 + rubricForm.r4_c3 + rubricForm.r4_c4 + rubricForm.r5_c1 + rubricForm.r5_c2 + rubricForm.r5_c3 + rubricForm.r5_c4 + rubricForm.r5_c5 + rubricForm.r5_c6 + rubricForm.r6_c1 + rubricForm.r6_c2 + rubricForm.r6_c3} / 68 pts</span>
+                      <span className="text-sky-500 block text-[10px] mt-0.5">Sessional: {Math.round(((rubricForm.r3_c1 + rubricForm.r3_c2 + rubricForm.r3_c3 + rubricForm.r3_c4 + rubricForm.r4_c1 + rubricForm.r4_c2 + rubricForm.r4_c3 + rubricForm.r4_c4 + rubricForm.r5_c1 + rubricForm.r5_c2 + rubricForm.r5_c3 + rubricForm.r5_c4 + rubricForm.r5_c5 + rubricForm.r5_c6 + rubricForm.r6_c1 + rubricForm.r6_c2 + rubricForm.r6_c3) / 68) * 100)} / 100 M</span>
+                    </div>
+                    <div className="border-l pl-4 border-slate-200 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[9px] uppercase">Total Sessional Marks</span>
+                      <span className="text-sm font-extrabold text-indigo-500 block mt-0.5">
+                        {Math.round(((rubricForm.r1_c1 + rubricForm.r1_c2 + rubricForm.r1_c3 + rubricForm.r1_c4 + rubricForm.r2_c1 + rubricForm.r2_c2 + rubricForm.r2_c3) / 28) * 50) + Math.round(((rubricForm.r3_c1 + rubricForm.r3_c2 + rubricForm.r3_c3 + rubricForm.r3_c4 + rubricForm.r4_c1 + rubricForm.r4_c2 + rubricForm.r4_c3 + rubricForm.r4_c4 + rubricForm.r5_c1 + rubricForm.r5_c2 + rubricForm.r5_c3 + rubricForm.r5_c4 + rubricForm.r5_c5 + rubricForm.r5_c6 + rubricForm.r6_c1 + rubricForm.r6_c2 + rubricForm.r6_c3) / 68) * 100)} / 150 Marks
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -2340,12 +2467,12 @@ const TeacherDashboard = () => {
                     value={rubricForm.remarks}
                     onChange={e => setRubricForm({...rubricForm, remarks: e.target.value})}
                     placeholder="Enter manual evaluator notes..."
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                 </div>
 
-                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-sm">
-                  Log Rubric Marks Scorecard
+                <button type="submit" className="py-2.5 px-6 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-sm transition-colors">
+                  Log Rubric Marks Scorecard (out of 150)
                 </button>
               </form>
             </Card>

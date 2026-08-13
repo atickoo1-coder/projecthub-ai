@@ -486,17 +486,18 @@ def evaluate_rubric(
         documentation=rubric_data.documentation,
         presentation=rubric_data.presentation,
         viva=rubric_data.viva,
-        total_marks=rubric_data.problem_definition + rubric_data.literature_survey + rubric_data.innovation + rubric_data.design + rubric_data.coding + rubric_data.testing + rubric_data.documentation + rubric_data.presentation + rubric_data.viva,
+        total_marks=rubric_data.total_marks,
+        rubrics_json=rubric_data.rubrics_json,
         remarks=rubric_data.remarks
     )
     db.add(rubric)
     db.commit()
     
-    # Also update project marks using total rubric marks out of e.g. 90
+    # Also update project marks using total rubric marks scaled to percentage (out of 100)
     project = db.query(models.Project).filter(models.Project.id == rubric_data.project_id).first()
     if project:
-        # Scale to out of 10 for dashboard consistency
-        project.marks = Math.round(rubric.total_marks / 9.0)
+        # Scale sessional marks (out of 150) to a percentage (out of 100)
+        project.marks = round((rubric.total_marks / 150.0) * 100.0)
         db.commit()
         
     return {"detail": "Rubric evaluation marks calculated and logged"}

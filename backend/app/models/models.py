@@ -422,6 +422,7 @@ class Rubric(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    rubrics_json = Column(Text, nullable=True) # JSON representation of R1-R6 scores
     problem_definition = Column(Integer, default=0)
     literature_survey = Column(Integer, default=0)
     innovation = Column(Integer, default=0)

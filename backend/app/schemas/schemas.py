@@ -598,6 +598,7 @@ class RubricBase(BaseModel):
     presentation: Optional[int] = 0
     viva: Optional[int] = 0
     total_marks: Optional[int] = 0
+    rubrics_json: Optional[str] = None
     remarks: Optional[str] = None
 
 class RubricCreate(RubricBase):
