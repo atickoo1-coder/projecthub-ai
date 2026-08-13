@@ -1095,7 +1095,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
       )}
 
       {/* Top ERP summary cards list */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-l-4 border-sky-500 bg-white dark:bg-slate-900 p-4">
           <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider block">Guide</span>
           <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100 block mt-1.5 truncate">
@@ -1104,38 +1104,12 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
           <span className="text-[9px] text-slate-400 block mt-1">Assigned Academic Mentor</span>
         </Card>
 
-        <Card className="border-l-4 border-emerald-500 bg-white dark:bg-slate-900 p-4">
-          <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider block">Overall Progress</span>
-          <span className="text-lg font-extrabold text-slate-800 dark:text-slate-100 block mt-1">{progressPercent}%</span>
-          <div className="w-full bg-slate-200 dark:bg-slate-850 h-1.5 rounded-full overflow-hidden mt-1.5">
-            <div className="bg-emerald-500 h-full" style={{ width: `${progressPercent}%` }}></div>
-          </div>
-        </Card>
-
-        <Card className="border-l-4 border-amber-500 bg-white dark:bg-slate-900 p-4">
-          <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider block">Next Milestone</span>
-          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100 block mt-1.5 truncate">
-            {nextMilestone ? nextMilestone.title : 'All Done'}
-          </span>
-          <span className="text-[9px] text-slate-450 block mt-1">
-            Status: <span className="font-semibold text-amber-500 capitalize">{nextMilestone ? nextMilestone.status : 'N/A'}</span>
-          </span>
-        </Card>
-
         <Card className="border-l-4 border-purple-500 bg-white dark:bg-slate-900 p-4">
           <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider block">Upcoming Deadline</span>
           <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100 block mt-1.5">
             {nextMilestone ? nextMilestone.deadline : 'No tasks pending'}
           </span>
           <span className="text-[9px] text-slate-400 block mt-1">Submission Target Date</span>
-        </Card>
-
-        <Card className="border-l-4 border-indigo-500 bg-white dark:bg-slate-900 p-4">
-          <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider block">Latest Feedback</span>
-          <span className="text-xs text-slate-500 block mt-2 truncate italic" title={activeProject?.feedbacks?.[0]?.comments || "No comments"}>
-            "{activeProject?.feedbacks?.[0]?.comments || 'No comments'}"
-          </span>
-          <span className="text-[9px] text-slate-400 block mt-1">Marks: {activeProject?.feedbacks?.[0]?.rating || 0}/10</span>
         </Card>
       </div>
 
