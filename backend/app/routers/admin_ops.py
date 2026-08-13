@@ -5,12 +5,18 @@ from typing import List, Optional
 import io
 import csv
 import openpyxl
+import secrets
+import string
 from ..core.db import get_db
 from ..core.security import RoleChecker, get_current_user_payload, get_password_hash
 from ..models import models
 from ..schemas import schemas
 from fastapi.responses import StreamingResponse
 import json
+
+def generate_random_password(length=8):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 router = APIRouter(prefix="/api/admin/ops", tags=["admin_ops"], dependencies=[Depends(RoleChecker(["admin"]))])
 
@@ -192,11 +198,16 @@ def create_student_manual(student_in: schemas.StudentCreate, db: Session = Depen
     if existing_roll:
         raise HTTPException(status_code=400, detail="Roll number already registered")
 
+    # Generate unique password if empty or default
+    plain_password = student_in.password
+    if not plain_password or plain_password == "password123":
+        plain_password = generate_random_password()
+
     # Create User
     db_user = models.User(
         name=student_in.name,
         email=student_in.email,
-        hashed_password=get_password_hash(student_in.password),
+        hashed_password=get_password_hash(plain_password),
         role="student",
         is_active=True
     )
@@ -225,7 +236,12 @@ def create_student_manual(student_in: schemas.StudentCreate, db: Session = Depen
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
-    return {"detail": "Student created successfully", "id": db_student.id}
+    return {
+        "detail": "Student created successfully",
+        "id": db_student.id,
+        "username": db_user.email,
+        "password": plain_password
+    }
 
 @router.put("/students/{student_id}")
 def update_student_profile(student_id: int, student_update: schemas.StudentUpdate, db: Session = Depends(get_db)):
@@ -273,13 +289,13 @@ def delete_student(student_id: int, mode: str = "soft", db: Session = Depends(ge
         raise HTTPException(status_code=400, detail="Invalid delete mode")
 
 @router.post("/students/bulk-upload")
-async def bulk_upload_students(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def bulk_upload_students(file: UploadFile = File(...), department_id: Optional[int] = Form(None), db: Session = Depends(get_db)):
     content = await file.read()
     records = []
     
     # Parse based on extension
     if file.filename.endswith(".csv"):
-        stream = io.StringIO(content.decode("utf-8"))
+        stream = io.StringIO(content.decode("utf-8-sig"))
         reader = csv.DictReader(stream)
         records = list(reader)
     elif file.filename.endswith(".xlsx"):
@@ -292,40 +308,114 @@ async def bulk_upload_students(file: UploadFile = File(...), db: Session = Depen
     else:
         raise HTTPException(status_code=400, detail="Invalid file type. Upload CSV or XLSX.")
 
+    # Clean and normalize dictionary keys
+    cleaned_records = []
+    for r in records:
+        cleaned_r = {}
+        for k, v in r.items():
+            if k is not None:
+                cleaned_r[str(k).strip().lower()] = v
+        cleaned_records.append(cleaned_r)
+    records = cleaned_records
+
     imported = 0
     duplicates = 0
     invalid = 0
+    credentials = []
 
     for r in records:
         try:
-            # Map parameters
-            name = r.get("Name") or r.get("Student Name") or r.get("name")
-            roll = r.get("Roll Number") or r.get("roll_number") or r.get("Roll")
-            reg = r.get("Registration Number") or r.get("reg_number") or r.get("Reg")
-            univ_roll = r.get("University Roll") or r.get("univ_roll_number") or r.get("Univ Roll")
-            email = r.get("Email") or r.get("email")
-            mobile = r.get("Mobile") or r.get("mobile") or r.get("Phone")
-            dept_code = r.get("Department") or r.get("department") or r.get("Branch")
-            year = int(r.get("Year") or r.get("year") or 1)
-            semester = int(r.get("Semester") or r.get("semester") or 1)
-            section = r.get("Section") or r.get("section") or "A"
-            class_name = r.get("Class") or r.get("class") or ""
-            batch = r.get("Batch") or r.get("batch") or "2023-2027"
-            program = r.get("Program") or r.get("program") or "B.Tech"
-            admission_year = int(r.get("Admission Year") or r.get("admission_year") or 2023)
+            # Map parameters by normalizing keys
+            def find_val(synonyms, default=None, is_exact=False):
+                for k, v in r.items():
+                    norm_k = "".join(char for char in str(k).lower() if char.isalnum())
+                    if is_exact:
+                        if norm_k in synonyms:
+                            return v
+                    else:
+                        if any(syn in norm_k for syn in synonyms):
+                            return v
+                return default
 
-            if not name or not roll or not email:
+            name = find_val(["name"], None)
+            for k, v in r.items():
+                norm_k = "".join(char for char in str(k).lower() if char.isalnum())
+                if "name" in norm_k and not any(x in norm_k for x in ["father", "mother", "parent", "guide", "teacher", "guardian", "spouse"]):
+                    name = v
+                    break
+
+            roll = find_val(["roll", "studentid", "student_id"], None)
+            reg = find_val(["reg"], None)
+            univ_roll = find_val(["univ"], None)
+            email = find_val(["email", "mail"], None)
+            mobile = find_val(["mobile", "phone", "contact"], None)
+            dept_code = find_val(["dept", "branch", "department"], None)
+            year = find_val(["year", "acad"], None)
+            semester = find_val(["sem"], None)
+            section = find_val(["sec", "section"], "A")
+            class_name = find_val(["class"], "")
+            batch = find_val(["batch", "session"], "2023-2027")
+            program = find_val(["program", "course"], "B.Tech")
+            admission_year = find_val(["admission"], 2023)
+
+            # Safely cast numeric/integer values
+            try:
+                year = int(float(year)) if year is not None and str(year).strip().lower() != "nan" else 4
+            except:
+                year = 4
+
+            try:
+                semester = int(float(semester)) if semester is not None and str(semester).strip().lower() != "nan" else 7
+            except:
+                semester = 7
+
+            try:
+                admission_year = int(float(admission_year)) if admission_year is not None and str(admission_year).strip().lower() != "nan" else 2023
+            except:
+                admission_year = 2023
+
+            # Mandatory checks (Email and others can be auto-generated)
+            if not name or not roll or str(name).strip().lower() == "nan" or str(roll).strip().lower() == "nan":
                 invalid += 1
                 continue
 
+            roll = str(roll).strip()
+            name = str(name).strip()
+
+            if not email or str(email).strip().lower() == "nan":
+                email = f"{roll.lower().replace('/', '_')}@college.edu"
+            else:
+                email = str(email).strip()
+
+            if not reg or str(reg).strip().lower() == "nan":
+                reg = f"REG-{roll}"
+            else:
+                reg = str(reg).strip()
+
+            if not univ_roll or str(univ_roll).strip().lower() == "nan":
+                univ_roll = f"UNIV-{roll}"
+            else:
+                univ_roll = str(univ_roll).strip()
+
             # Check dept
-            dept = db.query(models.Department).filter(models.Department.code == dept_code).first()
+            dept = None
+            if dept_code and str(dept_code).strip().lower() != "nan":
+                dept_code = str(dept_code).strip().upper()
+                dept = db.query(models.Department).filter(models.Department.code == dept_code).first()
+                if not dept:
+                    # auto create dept
+                    dept = models.Department(name=dept_code, code=dept_code)
+                    db.add(dept)
+                    db.flush()
+            elif department_id:
+                dept = db.query(models.Department).filter(models.Department.id == department_id).first()
+
             if not dept:
-                # auto create dept
-                dept = models.Department(name=dept_code, code=dept_code)
-                db.add(dept)
-                db.commit()
-                db.refresh(dept)
+                # Fall back to CSE
+                dept = db.query(models.Department).filter(models.Department.code == "CSE").first()
+                if not dept:
+                    # Final absolute fallback to first department
+                    dept = db.query(models.Department).first()
 
             # Check duplicates
             existing_user = db.query(models.User).filter(models.User.email == email).first()
@@ -335,41 +425,52 @@ async def bulk_upload_students(file: UploadFile = File(...), db: Session = Depen
                 continue
 
             # Create User
-            hashed_pwd = get_password_hash("password123")
+            plain_pwd = generate_random_password()
+            hashed_pwd = get_password_hash(plain_pwd)
             db_user = models.User(name=name, email=email, hashed_password=hashed_pwd, role="student")
             db.add(db_user)
-            db.commit()
-            db.refresh(db_user)
+            db.flush()
 
             # Create Student
             db_stud = models.Student(
                 user_id=db_user.id,
                 roll_number=str(roll),
-                reg_number=str(reg or roll),
-                univ_roll_number=str(univ_roll or roll),
-                mobile=str(mobile or ""),
+                reg_number=str(reg),
+                univ_roll_number=str(univ_roll),
+                mobile=str(mobile or "" if str(mobile).lower() != "nan" else ""),
                 department_id=dept.id,
                 year=year,
                 semester=semester,
-                section=str(section),
-                class_name=str(class_name),
-                batch=str(batch),
-                program=str(program),
+                section=str(section if str(section).lower() != "nan" else "A"),
+                class_name=str(class_name if str(class_name).lower() != "nan" else ""),
+                batch=str(batch if str(batch).lower() != "nan" else "2023-2027"),
+                program=str(program if str(program).lower() != "nan" else "B.Tech"),
                 admission_year=admission_year,
                 cgpa=8.0
             )
             db.add(db_stud)
             db.commit()
+            credentials.append({
+                "name": name,
+                "roll": str(roll),
+                "username": email,
+                "password": plain_pwd
+            })
             imported += 1
 
         except Exception as e:
+            print("Import error detail:", str(e), flush=True)
+            import traceback
+            traceback.print_exc()
+            db.rollback()
             invalid += 1
             continue
 
     return {
         "imported": imported,
         "duplicates": duplicates,
-        "invalid": invalid
+        "invalid": invalid,
+        "credentials": credentials
     }
 
 @router.get("/students/hierarchy")

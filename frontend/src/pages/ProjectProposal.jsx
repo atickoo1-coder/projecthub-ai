@@ -146,7 +146,9 @@ const ProjectProposal = ({ onBack }) => {
     setSuccess(null);
     
     // Quick validation
-    const required = ['title', 'domain', 'category', 'problem_statement', 'objectives', 'proposed_system', 'technologies_used'];
+    const required = (proposal && proposal.status === 'title_approved')
+      ? ['domain', 'category', 'problem_statement', 'objectives', 'proposed_system', 'technologies_used']
+      : ['title'];
     for (const field of required) {
       if (!formData[field]) {
         setError(`Please fill in the required field: ${field.replace('_', ' ').toUpperCase()}`);
@@ -157,7 +159,11 @@ const ProjectProposal = ({ onBack }) => {
     try {
       const data = prepareFormData();
       await lifecycleAPI.submitProposal(data);
-      setSuccess('Project Proposal submitted successfully for Guide review!');
+      if (proposal && proposal.status === 'title_approved') {
+        setSuccess('Project documents submitted successfully for final review!');
+      } else {
+        setSuccess('Project title and group members submitted successfully for Guide review!');
+      }
       fetchProposal();
     } catch (err) {
       console.error(err);
@@ -212,7 +218,19 @@ const ProjectProposal = ({ onBack }) => {
         return {
           bg: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20',
           icon: <CheckCircle className="w-5 h-5 mr-2 text-emerald-500" />,
-          label: 'Approved'
+          label: 'Project Fully Approved'
+        };
+      case 'title_approved':
+        return {
+          bg: 'bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border-indigo-500/20',
+          icon: <CheckCircle className="w-5 h-5 mr-2 text-indigo-500" />,
+          label: 'Title Approved (Pending Documents)'
+        };
+      case 'pending_documents':
+        return {
+          bg: 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20',
+          icon: <Clock className="w-5 h-5 mr-2 text-amber-500" />,
+          label: 'Documents Pending Review'
         };
       case 'rejected':
         return {
@@ -230,7 +248,7 @@ const ProjectProposal = ({ onBack }) => {
         return {
           bg: 'bg-sky-500/10 text-sky-500 dark:text-sky-400 border-sky-500/20',
           icon: <Clock className="w-5 h-5 mr-2 text-sky-500" />,
-          label: 'Pending Review'
+          label: 'Title Pending Review'
         };
     }
   };
@@ -268,6 +286,13 @@ const ProjectProposal = ({ onBack }) => {
         </div>
       )}
 
+      {proposal && !proposal.is_lead && (
+        <div className="p-4 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 rounded-2xl text-xs flex items-center mb-6">
+          <AlertCircle className="w-4 h-4 mr-2 text-indigo-500" />
+          <span>Read-only Mode: You are a member of this project group. Only the group lead student ({proposal.student_name}) can edit proposal specifications.</span>
+        </div>
+      )}
+
       {proposal && !isEditing && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Status Sidebar */}
@@ -281,7 +306,7 @@ const ProjectProposal = ({ onBack }) => {
               {proposal.remarks && (
                 <div className="text-xs border-t pt-3 mt-2 border-current/20">
                   <span className="font-semibold block mb-1">Guide Feedback Remarks:</span>
-                  <p className="italic">{proposal.remarks}</p>
+                  <p className="italic">"{proposal.remarks}"</p>
                 </div>
               )}
 
@@ -294,41 +319,43 @@ const ProjectProposal = ({ onBack }) => {
             </div>
 
             {/* Uploaded Files Info Card */}
-            <div className="bg-white dark:bg-slate-900 border rounded-2xl p-5 space-y-4">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Attached Documents</h3>
-              <div className="space-y-2 text-xs">
-                {proposal.proposal_pdf_url ? (
-                  <a href={`http://localhost:8000/${proposal.proposal_pdf_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
-                    <FileText className="w-4 h-4 text-rose-500 mr-2" />
-                    <span className="truncate">Proposal PDF Document</span>
-                  </a>
-                ) : <span className="text-slate-500 italic block">No Proposal PDF uploaded.</span>}
+            {proposal.status !== 'pending' && (
+              <div className="bg-white dark:bg-slate-900 border rounded-2xl p-5 space-y-4">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Attached Documents</h3>
+                <div className="space-y-2 text-xs">
+                  {proposal.proposal_pdf_url ? (
+                    <a href={`http://localhost:8000/${proposal.proposal_pdf_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
+                      <FileText className="w-4 h-4 text-rose-500 mr-2" />
+                      <span className="truncate">Proposal PDF Document</span>
+                    </a>
+                  ) : <span className="text-slate-500 italic block">No Proposal PDF uploaded.</span>}
 
-                {proposal.synopsis_url ? (
-                  <a href={`http://localhost:8000/${proposal.synopsis_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
-                    <FileText className="w-4 h-4 text-sky-500 mr-2" />
-                    <span className="truncate">Synopsis Document</span>
-                  </a>
-                ) : null}
+                  {proposal.synopsis_url ? (
+                    <a href={`http://localhost:8000/${proposal.synopsis_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
+                      <FileText className="w-4 h-4 text-sky-500 mr-2" />
+                      <span className="truncate">Synopsis Document</span>
+                    </a>
+                  ) : null}
 
-                {proposal.literature_survey_url ? (
-                  <a href={`http://localhost:8000/${proposal.literature_survey_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
-                    <FileText className="w-4 h-4 text-emerald-500 mr-2" />
-                    <span className="truncate">Literature Survey Review</span>
-                  </a>
-                ) : null}
+                  {proposal.literature_survey_url ? (
+                    <a href={`http://localhost:8000/${proposal.literature_survey_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
+                      <FileText className="w-4 h-4 text-emerald-500 mr-2" />
+                      <span className="truncate">Literature Survey Review</span>
+                    </a>
+                  ) : null}
 
-                {proposal.initial_diagram_url ? (
-                  <a href={`http://localhost:8000/${proposal.initial_diagram_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
-                    <FileText className="w-4 h-4 text-purple-500 mr-2" />
-                    <span className="truncate">Initial Diagram Blueprint</span>
-                  </a>
-                ) : null}
+                  {proposal.initial_diagram_url ? (
+                    <a href={`http://localhost:8000/${proposal.initial_diagram_url}`} target="_blank" rel="noreferrer" className="flex items-center p-2 border hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
+                      <FileText className="w-4 h-4 text-purple-500 mr-2" />
+                      <span className="truncate">Initial Diagram Blueprint</span>
+                    </a>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Actions Card */}
-            {proposal.status !== 'approved' && (
+            {proposal.status !== 'approved' && proposal.is_lead && (
               <div className="flex gap-3">
                 <button 
                   onClick={() => setIsEditing(true)} 
@@ -350,246 +377,307 @@ const ProjectProposal = ({ onBack }) => {
           </div>
 
           {/* Details View */}
-          <div className="lg:col-span-2 space-y-6 bg-white dark:bg-slate-900 border p-6 rounded-2xl">
+          <div className="lg:col-span-2 space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
             <div>
               <span className="text-[10px] bg-sky-500/10 text-sky-500 font-bold uppercase px-2 py-0.5 rounded">
-                {proposal.category}
+                {proposal.status === 'pending' ? 'Title Stage' : proposal.category || 'N/A'}
               </span>
-              <h2 className="text-lg font-bold mt-2">{proposal.title}</h2>
-              <p className="text-xs text-slate-400 mt-1">Domain: {proposal.domain} • Duration: {proposal.project_duration}</p>
+              <h2 className="text-lg font-bold mt-2 text-slate-800 dark:text-slate-100">{proposal.title}</h2>
+              <p className="text-xs text-slate-400 mt-1">Proposed by: {proposal.student_name} ({proposal.roll_number}) • Guide: {proposal.guide_name}</p>
             </div>
 
             <div className="space-y-4 text-xs divide-y divide-slate-100 dark:divide-slate-800">
               <div className="pt-2">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Problem Statement</h4>
-                <p className="whitespace-pre-wrap">{proposal.problem_statement}</p>
+                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-2">Project Group Members</h4>
+                {proposal.members && proposal.members.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {proposal.members.map(member => (
+                      <div key={member.id} className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-xl">
+                        <span className="font-bold text-slate-700 dark:text-slate-200 block">{member.name}</span>
+                        <span className="text-[10px] text-slate-400 block">Roll: {member.roll_number} • Dept: {member.department} • Sec {member.section}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic">No extra members resolved (Raw: {proposal.team_members || 'Empty'})</p>
+                )}
               </div>
 
-              <div className="pt-4">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Objectives</h4>
-                <p className="whitespace-pre-wrap">{proposal.objectives}</p>
-              </div>
-
-              <div className="pt-4">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Existing System Challenges</h4>
-                <p className="whitespace-pre-wrap">{proposal.existing_system}</p>
-              </div>
-
-              <div className="pt-4">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Proposed System</h4>
-                <p className="whitespace-pre-wrap">{proposal.proposed_system}</p>
-              </div>
-
-              <div className="pt-4">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Scope of Work</h4>
-                <p className="whitespace-pre-wrap">{proposal.scope}</p>
-              </div>
-
-              <div className="pt-4">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Expected Outcome</h4>
-                <p className="whitespace-pre-wrap">{proposal.expected_outcome}</p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                <div>
-                  <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Technologies</h4>
-                  <p>{proposal.technologies_used}</p>
+              {proposal.status === 'pending' ? (
+                <div className="pt-4">
+                  <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl">
+                    <p className="text-xs text-slate-500 dark:text-slate-350 leading-relaxed font-semibold">
+                      🔑 **Title Proposal Submitted**: Once your allocated guide reviews and **approves** this title, you will be unlocked to enter the complete specifications (Domain, Problem Statement, Objectives, and upload Synopsis PDF documents).
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Language</h4>
-                  <p>{proposal.programming_language}</p>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Database</h4>
-                  <p>{proposal.database}</p>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Tools</h4>
-                  <p>{proposal.tools_used}</p>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="pt-4">
+                    <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Problem Statement</h4>
+                    <p className="whitespace-pre-wrap">{proposal.problem_statement || 'N/A'}</p>
+                  </div>
 
-              <div className="pt-4">
-                <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Team Members</h4>
-                <p>{proposal.team_members}</p>
-              </div>
+                  <div className="pt-4">
+                    <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Objectives</h4>
+                    <p className="whitespace-pre-wrap">{proposal.objectives || 'N/A'}</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Existing System Challenges</h4>
+                    <p className="whitespace-pre-wrap">{proposal.existing_system || 'N/A'}</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Proposed System</h4>
+                    <p className="whitespace-pre-wrap">{proposal.proposed_system || 'N/A'}</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Scope of Work</h4>
+                    <p className="whitespace-pre-wrap">{proposal.scope || 'N/A'}</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Expected Outcome</h4>
+                    <p className="whitespace-pre-wrap">{proposal.expected_outcome || 'N/A'}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                      <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Technologies</h4>
+                      <p>{proposal.technologies_used || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Language</h4>
+                      <p>{proposal.programming_language || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Database</h4>
+                      <p>{proposal.database || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-0.5">Tools</h4>
+                      <p>{proposal.tools_used || 'N/A'}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {isEditing && (
-        <form onSubmit={handleSubmitProposal} className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 border p-6 rounded-2xl space-y-6">
-            <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2">
-              <Briefcase className="w-4 h-4 mr-2" />
-              1. Basic Project Specifications
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="md:col-span-3">
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Title *</label>
-                <input required type="text" name="title" value={formData.title} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
+      {isEditing && (() => {
+        const isInitialPhase = !proposal || ['pending', 'revision_required', 'rejected'].includes(proposal.status);
+        return (
+          <form onSubmit={handleSubmitProposal} className="space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl space-y-6 shadow-sm">
+              <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2">
+                <Briefcase className="w-4 h-4 mr-2" />
+                1. Project Title & Group Members
+              </h2>
               
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Domain *</label>
-                <input required type="text" placeholder="e.g. Computer Vision" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="md:col-span-3">
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Title *</label>
+                  <input 
+                    required 
+                    type="text" 
+                    name="title" 
+                    value={formData.title} 
+                    onChange={handleInputChange} 
+                    disabled={proposal && proposal.status === 'title_approved'} 
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl disabled:opacity-60" 
+                  />
+                </div>
+                
+                <div className="md:col-span-3">
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Group Members (Enter Student IDs/Roll Numbers, Comma-Separated)</label>
+                  <textarea 
+                    rows={2} 
+                    placeholder="e.g. AI-2023-012, CSE-2023-045" 
+                    name="team_members" 
+                    value={formData.team_members} 
+                    onChange={handleInputChange} 
+                    disabled={proposal && proposal.status === 'title_approved'} 
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl disabled:opacity-60" 
+                  />
+                  <p className="text-[10px] text-slate-450 mt-1">Please separate each group member's roll number or student ID by a comma.</p>
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Category *</label>
-                <input required type="text" placeholder="e.g. Web Application" name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-              
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Duration *</label>
-                <select name="project_duration" value={formData.project_duration} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl">
-                  <option value="3 months">3 Months</option>
-                  <option value="4 months">4 Months</option>
-                  <option value="6 months">6 Months</option>
-                  <option value="8 months">8 Months</option>
-                </select>
-              </div>
+
+              {isInitialPhase ? (
+                <div className="p-4 bg-sky-500/5 border border-sky-500/15 rounded-2xl text-xs space-y-2">
+                  <p className="font-bold text-sky-600 dark:text-sky-400">💡 Next Steps:</p>
+                  <p className="text-slate-500 dark:text-slate-350">
+                    Submit your project title first. Once your guide approves it, you will be unlocked to enter the rest of the specifications (domain, problem statement, objectives, tech stack, and upload synopsis PDFs).
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
+                    <Layers className="w-4 h-4 mr-2" />
+                    2. Project Domain & Categories
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Domain *</label>
+                      <input required type="text" placeholder="e.g. Computer Vision" name="domain" value={formData.domain} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Category *</label>
+                      <input required type="text" placeholder="e.g. Web Application" name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Project Duration *</label>
+                      <select name="project_duration" value={formData.project_duration} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
+                        <option value="3 months">3 Months</option>
+                        <option value="4 months">4 Months</option>
+                        <option value="6 months">6 Months</option>
+                        <option value="8 months">8 Months</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
+                    <Layers className="w-4 h-4 mr-2" />
+                    3. Problem Description & Proposed Method
+                  </h2>
+
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Problem Statement *</label>
+                      <textarea required rows={4} name="problem_statement" value={formData.problem_statement} onChange={handleInputChange} placeholder="What issues does this project solve?" className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Objectives *</label>
+                      <textarea required rows={3} name="objectives" value={formData.objectives} onChange={handleInputChange} placeholder="List out clear core goals..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Existing System Limitations</label>
+                      <textarea rows={3} name="existing_system" value={formData.existing_system} onChange={handleInputChange} placeholder="Brief details about current methods/limitations..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Proposed System *</label>
+                      <textarea required rows={4} name="proposed_system" value={formData.proposed_system} onChange={handleInputChange} placeholder="Explain your design / methodology..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Scope of Work</label>
+                      <textarea rows={2} name="scope" value={formData.scope} onChange={handleInputChange} placeholder="Boundaries and constraints of the code logic..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Expected Outcome</label>
+                      <textarea rows={2} name="expected_outcome" value={formData.expected_outcome} onChange={handleInputChange} placeholder="List measurable expected deliverables..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                  </div>
+
+                  <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
+                    <Database className="w-4 h-4 mr-2" />
+                    4. Technologies & Stack Details
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Technologies Used *</label>
+                      <input required type="text" placeholder="e.g. React, OpenCV" name="technologies_used" value={formData.technologies_used} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Programming Languages</label>
+                      <input type="text" placeholder="e.g. JavaScript, Python" name="programming_language" value={formData.programming_language} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Database</label>
+                      <input type="text" placeholder="e.g. SQLite, PostgreSQL" name="database" value={formData.database} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Tools / IDEs</label>
+                      <input type="text" placeholder="e.g. VS Code, Git" name="tools_used" value={formData.tools_used} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                    </div>
+                  </div>
+
+                  <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
+                    <UploadCloud className="w-4 h-4 mr-2" />
+                    5. Document Deliverables (PDF, Synopsis)
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                    <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
+                      <FileText className="w-8 h-8 text-rose-500 mb-2" />
+                      <span className="font-semibold text-xs text-slate-700 dark:text-slate-200">Proposal PDF Document</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Upload initial draft summary report</span>
+                      <input type="file" accept=".pdf" onChange={e => handleFileChange(e, 'proposal_pdf')} className="mt-2 text-[10px] cursor-pointer" />
+                      {fileNames.proposal_pdf && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.proposal_pdf}</span>}
+                    </div>
+
+                    <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
+                      <FileText className="w-8 h-8 text-sky-500 mb-2" />
+                      <span className="font-semibold text-xs text-slate-700 dark:text-slate-200">Project Synopsis</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Upload a short project overview abstract</span>
+                      <input type="file" accept=".pdf,.doc,.docx" onChange={e => handleFileChange(e, 'synopsis')} className="mt-2 text-[10px] cursor-pointer" />
+                      {fileNames.synopsis && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.synopsis}</span>}
+                    </div>
+
+                    <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
+                      <FileText className="w-8 h-8 text-emerald-500 mb-2" />
+                      <span className="font-semibold text-xs text-slate-700 dark:text-slate-200">Literature Survey Details</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Upload reference logs and citations summary</span>
+                      <input type="file" accept=".pdf,.doc,.docx" onChange={e => handleFileChange(e, 'literature_survey')} className="mt-2 text-[10px] cursor-pointer" />
+                      {fileNames.literature_survey && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.literature_survey}</span>}
+                    </div>
+
+                    <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
+                      <FileText className="w-8 h-8 text-purple-500 mb-2" />
+                      <span className="font-semibold text-xs text-slate-700 dark:text-slate-200">Initial Diagram Blueprint</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Architecture diagrams or block workflows</span>
+                      <input type="file" accept="image/*,.pdf" onChange={e => handleFileChange(e, 'initial_diagram')} className="mt-2 text-[10px] cursor-pointer" />
+                      {fileNames.initial_diagram && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.initial_diagram}</span>}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
-            <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
-              <Layers className="w-4 h-4 mr-2" />
-              2. Problem Description & Architecture
-            </h2>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Problem Statement *</label>
-                <textarea required rows={4} name="problem_statement" value={formData.problem_statement} onChange={handleInputChange} placeholder="What issues does this project solve?" className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Objectives *</label>
-                <textarea required rows={3} name="objectives" value={formData.objectives} onChange={handleInputChange} placeholder="List out clear core goals..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Existing System Limitations</label>
-                <textarea rows={3} name="existing_system" value={formData.existing_system} onChange={handleInputChange} placeholder="Brief details about current methods/limitations..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Proposed System *</label>
-                <textarea required rows={4} name="proposed_system" value={formData.proposed_system} onChange={handleInputChange} placeholder="Explain your design / methodology..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Scope of Work</label>
-                <textarea rows={2} name="scope" value={formData.scope} onChange={handleInputChange} placeholder="Boundaries and constraints of the code logic..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Expected Outcome</label>
-                <textarea rows={2} name="expected_outcome" value={formData.expected_outcome} onChange={handleInputChange} placeholder="List measurable expected deliverables..." className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-            </div>
-
-            <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
-              <Database className="w-4 h-4 mr-2" />
-              3. Technologies & Resources
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Technologies Used *</label>
-                <input required type="text" placeholder="e.g. React, OpenCV" name="technologies_used" value={formData.technologies_used} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-              
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Programming Languages</label>
-                <input type="text" placeholder="e.g. JavaScript, Python" name="programming_language" value={formData.programming_language} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-              
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Database</label>
-                <input type="text" placeholder="e.g. SQLite, PostgreSQL" name="database" value={formData.database} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-              
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Tools / IDEs</label>
-                <input type="text" placeholder="e.g. VS Code, Git" name="tools_used" value={formData.tools_used} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-              </div>
-            </div>
-
-            <div className="pt-2 text-xs">
-              <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Team Members (Include Name, Roll)</label>
-              <textarea rows={2} placeholder="List out names and roll numbers of students involved..." name="team_members" value={formData.team_members} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl" />
-            </div>
-
-            <h2 className="text-sm font-bold flex items-center text-sky-500 border-b pb-2 pt-4">
-              <UploadCloud className="w-4 h-4 mr-2" />
-              4. Document Deliverables (PDF, Synopsis)
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-              <div className="p-4 border border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
-                <FileText className="w-8 h-8 text-rose-500 mb-2" />
-                <span className="font-semibold text-xs">Proposal PDF Document</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Upload initial draft summary report</span>
-                <input type="file" accept=".pdf" onChange={e => handleFileChange(e, 'proposal_pdf')} className="mt-2 text-[10px]" />
-                {fileNames.proposal_pdf && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.proposal_pdf}</span>}
-              </div>
-
-              <div className="p-4 border border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
-                <FileText className="w-8 h-8 text-sky-500 mb-2" />
-                <span className="font-semibold text-xs">Project Synopsis</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Upload a short project overview abstract</span>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={e => handleFileChange(e, 'synopsis')} className="mt-2 text-[10px]" />
-                {fileNames.synopsis && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.synopsis}</span>}
-              </div>
-
-              <div className="p-4 border border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
-                <FileText className="w-8 h-8 text-emerald-500 mb-2" />
-                <span className="font-semibold text-xs">Literature Survey Details</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Upload reference logs and citations summary</span>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={e => handleFileChange(e, 'literature_survey')} className="mt-2 text-[10px]" />
-                {fileNames.literature_survey && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.literature_survey}</span>}
-              </div>
-
-              <div className="p-4 border border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
-                <FileText className="w-8 h-8 text-purple-500 mb-2" />
-                <span className="font-semibold text-xs">Initial Diagram Blueprint</span>
-                <span className="text-[10px] text-slate-400 mt-0.5">Architecture diagrams or block workflows</span>
-                <input type="file" accept="image/*,.pdf" onChange={e => handleFileChange(e, 'initial_diagram')} className="mt-2 text-[10px]" />
-                {fileNames.initial_diagram && <span className="text-[10px] text-emerald-500 mt-2 font-bold">{fileNames.initial_diagram}</span>}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-4 justify-end">
-            {proposal && (
+            <div className="flex gap-4 justify-end">
+              {proposal && (
+                <button 
+                  type="button" 
+                  onClick={() => setIsEditing(false)} 
+                  className="px-4 py-2 border dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-xs transition-all"
+                >
+                  Cancel Edit
+                </button>
+              )}
               <button 
                 type="button" 
-                onClick={() => setIsEditing(false)} 
-                className="px-4 py-2 border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-xs transition-all"
+                onClick={handleSaveDraft} 
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 rounded-xl text-xs font-bold flex items-center transition-all"
               >
-                Cancel Edit
+                <Save className="w-4 h-4 mr-2" />
+                Save Draft
               </button>
-            )}
-            <button 
-              type="button" 
-              onClick={handleSaveDraft} 
-              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 rounded-xl text-xs font-bold flex items-center transition-all"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save Draft
-            </button>
-            <button 
-              type="submit" 
-              className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold flex items-center transition-all"
-            >
-              Submit Proposal
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </button>
-          </div>
-        </form>
-      )}
+              <button 
+                type="submit" 
+                className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold flex items-center transition-all"
+              >
+                {proposal && proposal.status === 'title_approved' ? 'Submit Documents' : 'Submit Title Proposal'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </button>
+            </div>
+          </form>
+        );
+      })()}
     </div>
   );
 };

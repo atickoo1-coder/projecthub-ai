@@ -321,6 +321,10 @@ export const adminAPI = {
     const res = await api.get('/admin/projects', { params: { status } });
     return res.data;
   },
+  updateProject: async (projectId, data) => {
+    const res = await api.put(`/admin/projects/${projectId}`, data);
+    return res.data;
+  },
   getOpsStats: async () => {
     const res = await api.get('/admin/ops/stats');
     return res.data;
@@ -345,9 +349,12 @@ export const adminAPI = {
     const res = await api.delete(`/admin/ops/students/${studentId}`, { params: { mode } });
     return res.data;
   },
-  bulkUploadStudents: async (file) => {
+  bulkUploadStudents: async (file, departmentId = null) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (departmentId) {
+      formData.append('department_id', departmentId);
+    }
     const res = await api.post('/admin/ops/students/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
@@ -543,6 +550,10 @@ export const lifecycleAPI = {
   },
   getPendingProposals: async () => {
     const res = await api.get('/lifecycle/proposal/pending');
+    return res.data;
+  },
+  getAllProposals: async () => {
+    const res = await api.get('/lifecycle/proposal/all');
     return res.data;
   },
   evaluateProposal: async (id, action, remarks, deadline) => {

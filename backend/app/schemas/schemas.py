@@ -641,20 +641,20 @@ class AnalyticsOut(AnalyticsBase):
 
 class ProjectProposalBase(BaseModel):
     title: str
-    domain: str
-    category: str
-    problem_statement: str
-    objectives: str
-    existing_system: str
-    proposed_system: str
-    scope: str
-    expected_outcome: str
-    technologies_used: str
-    programming_language: str
-    database: str
-    tools_used: str
-    project_duration: str
-    team_members: str
+    domain: Optional[str] = None
+    category: Optional[str] = None
+    problem_statement: Optional[str] = None
+    objectives: Optional[str] = None
+    existing_system: Optional[str] = None
+    proposed_system: Optional[str] = None
+    scope: Optional[str] = None
+    expected_outcome: Optional[str] = None
+    technologies_used: Optional[str] = None
+    programming_language: Optional[str] = None
+    database: Optional[str] = None
+    tools_used: Optional[str] = None
+    project_duration: Optional[str] = None
+    team_members: Optional[str] = None
 
 class ProjectProposalCreate(ProjectProposalBase):
     proposal_pdf_url: Optional[str] = None

@@ -46,25 +46,53 @@ def save_file(file: UploadFile, subfolder: str) -> Optional[str]:
         shutil.copyfileobj(file.file, buffer)
     return filepath.replace("\\", "/")
 
+def get_member_details(team_members_str: Optional[str], db: Session):
+    if not team_members_str:
+        return []
+    import re
+    tokens = re.split(r'[,;\n\r]', team_members_str)
+    members = []
+    seen_ids = set()
+    for token in tokens:
+        clean_token = token.strip()
+        if not clean_token:
+            continue
+        student = db.query(models.Student).join(models.User).filter(
+            (models.Student.roll_number == clean_token) |
+            (models.User.email == clean_token) |
+            (models.User.name == clean_token)
+        ).first()
+        if student and student.id not in seen_ids:
+            seen_ids.add(student.id)
+            members.append({
+                "id": student.id,
+                "name": student.user.name,
+                "roll_number": student.roll_number,
+                "email": student.user.email,
+                "department": student.department.code if student.department else "",
+                "section": student.section
+            })
+    return members
+
 # --- PROPOSAL WORKSPACE ---
 
 @router.post("/proposal/draft")
 def save_proposal_draft(
     title: str = Form(...),
-    domain: str = Form(...),
-    category: str = Form(...),
-    problem_statement: str = Form(...),
-    objectives: str = Form(...),
-    existing_system: str = Form(...),
-    proposed_system: str = Form(...),
-    scope: str = Form(...),
-    expected_outcome: str = Form(...),
-    technologies_used: str = Form(...),
-    programming_language: str = Form(...),
-    database: str = Form(...),
-    tools_used: str = Form(...),
-    project_duration: str = Form(...),
-    team_members: str = Form(...),
+    domain: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    problem_statement: Optional[str] = Form(None),
+    objectives: Optional[str] = Form(None),
+    existing_system: Optional[str] = Form(None),
+    proposed_system: Optional[str] = Form(None),
+    scope: Optional[str] = Form(None),
+    expected_outcome: Optional[str] = Form(None),
+    technologies_used: Optional[str] = Form(None),
+    programming_language: Optional[str] = Form(None),
+    database: Optional[str] = Form(None),
+    tools_used: Optional[str] = Form(None),
+    project_duration: Optional[str] = Form(None),
+    team_members: Optional[str] = Form(None),
     proposal_pdf: Optional[UploadFile] = File(None),
     synopsis: Optional[UploadFile] = File(None),
     literature_survey: Optional[UploadFile] = File(None),
@@ -88,20 +116,20 @@ def save_proposal_draft(
         
         # Update details
         proposal.title = title
-        proposal.domain = domain
-        proposal.category = category
-        proposal.problem_statement = problem_statement
-        proposal.objectives = objectives
-        proposal.existing_system = existing_system
-        proposal.proposed_system = proposed_system
-        proposal.scope = scope
-        proposal.expected_outcome = expected_outcome
-        proposal.technologies_used = technologies_used
-        proposal.programming_language = programming_language
-        proposal.database = database
-        proposal.tools_used = tools_used
-        proposal.project_duration = project_duration
-        proposal.team_members = team_members
+        if domain is not None: proposal.domain = domain
+        if category is not None: proposal.category = category
+        if problem_statement is not None: proposal.problem_statement = problem_statement
+        if objectives is not None: proposal.objectives = objectives
+        if existing_system is not None: proposal.existing_system = existing_system
+        if proposed_system is not None: proposal.proposed_system = proposed_system
+        if scope is not None: proposal.scope = scope
+        if expected_outcome is not None: proposal.expected_outcome = expected_outcome
+        if technologies_used is not None: proposal.technologies_used = technologies_used
+        if programming_language is not None: proposal.programming_language = programming_language
+        if database is not None: proposal.database = database
+        if tools_used is not None: proposal.tools_used = tools_used
+        if project_duration is not None: proposal.project_duration = project_duration
+        if team_members is not None: proposal.team_members = team_members
         
         if pdf_url: proposal.proposal_pdf_url = pdf_url
         if synopsis_url: proposal.synopsis_url = synopsis_url
@@ -123,7 +151,7 @@ def save_proposal_draft(
             programming_language=programming_language,
             database=database,
             tools_used=tools_used,
-            project_duration=project_duration,
+            project_duration=project_duration or "4 months",
             team_members=team_members,
             proposal_pdf_url=pdf_url,
             synopsis_url=synopsis_url,
@@ -140,20 +168,20 @@ def save_proposal_draft(
 @router.post("/proposal/submit")
 def submit_proposal(
     title: str = Form(...),
-    domain: str = Form(...),
-    category: str = Form(...),
-    problem_statement: str = Form(...),
-    objectives: str = Form(...),
-    existing_system: str = Form(...),
-    proposed_system: str = Form(...),
-    scope: str = Form(...),
-    expected_outcome: str = Form(...),
-    technologies_used: str = Form(...),
-    programming_language: str = Form(...),
-    database: str = Form(...),
-    tools_used: str = Form(...),
-    project_duration: str = Form(...),
-    team_members: str = Form(...),
+    domain: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    problem_statement: Optional[str] = Form(None),
+    objectives: Optional[str] = Form(None),
+    existing_system: Optional[str] = Form(None),
+    proposed_system: Optional[str] = Form(None),
+    scope: Optional[str] = Form(None),
+    expected_outcome: Optional[str] = Form(None),
+    technologies_used: Optional[str] = Form(None),
+    programming_language: Optional[str] = Form(None),
+    database: Optional[str] = Form(None),
+    tools_used: Optional[str] = Form(None),
+    project_duration: Optional[str] = Form(None),
+    team_members: Optional[str] = Form(None),
     proposal_pdf: Optional[UploadFile] = File(None),
     synopsis: Optional[UploadFile] = File(None),
     literature_survey: Optional[UploadFile] = File(None),
@@ -170,28 +198,42 @@ def submit_proposal(
     diagram_url = save_file(initial_diagram, "diagrams")
     
     if proposal:
-        proposal.title = title
-        proposal.domain = domain
-        proposal.category = category
-        proposal.problem_statement = problem_statement
-        proposal.objectives = objectives
-        proposal.existing_system = existing_system
-        proposal.proposed_system = proposed_system
-        proposal.scope = scope
-        proposal.expected_outcome = expected_outcome
-        proposal.technologies_used = technologies_used
-        proposal.programming_language = programming_language
-        proposal.database = database
-        proposal.tools_used = tools_used
-        proposal.project_duration = project_duration
-        proposal.team_members = team_members
-        proposal.status = "pending"
+        if proposal.status == "approved":
+            raise HTTPException(status_code=400, detail="Cannot edit approved proposal")
+        
+        # If status is title_approved, this is stage 2 document submission
+        if proposal.status == "title_approved":
+            if not domain or not category or not problem_statement or not objectives or not proposed_system or not technologies_used:
+                raise HTTPException(status_code=400, detail="Please fill in all required documents (Domain, Category, Problem Statement, Objectives, Proposed System, and Technologies)")
+            
+            proposal.title = title
+            proposal.domain = domain
+            proposal.category = category
+            proposal.problem_statement = problem_statement
+            proposal.objectives = objectives
+            if existing_system is not None: proposal.existing_system = existing_system
+            proposal.proposed_system = proposed_system
+            if scope is not None: proposal.scope = scope
+            if expected_outcome is not None: proposal.expected_outcome = expected_outcome
+            proposal.technologies_used = technologies_used
+            if programming_language is not None: proposal.programming_language = programming_language
+            if database is not None: proposal.database = database
+            if tools_used is not None: proposal.tools_used = tools_used
+            if project_duration is not None: proposal.project_duration = project_duration
+            if team_members is not None: proposal.team_members = team_members
+            proposal.status = "pending_documents"
+        else:
+            # Initial stage 1 title submission
+            proposal.title = title
+            if team_members is not None: proposal.team_members = team_members
+            proposal.status = "pending"
         
         if pdf_url: proposal.proposal_pdf_url = pdf_url
         if synopsis_url: proposal.synopsis_url = synopsis_url
         if literature_url: proposal.literature_survey_url = literature_url
         if diagram_url: proposal.initial_diagram_url = diagram_url
     else:
+        # Initial submission
         proposal = models.ProjectProposal(
             student_id=student.id,
             title=title,
@@ -207,7 +249,7 @@ def submit_proposal(
             programming_language=programming_language,
             database=database,
             tools_used=tools_used,
-            project_duration=project_duration,
+            project_duration=project_duration or "4 months",
             team_members=team_members,
             proposal_pdf_url=pdf_url,
             synopsis_url=synopsis_url,
@@ -238,8 +280,22 @@ def get_my_proposal(payload: dict = Depends(get_current_user_payload), db: Sessi
     student = get_student(payload, db)
     proposal = db.query(models.ProjectProposal).filter(models.ProjectProposal.student_id == student.id).first()
     if not proposal:
+        all_props = db.query(models.ProjectProposal).all()
+        for p in all_props:
+            if p.team_members and (student.roll_number in p.team_members or student.user.email in p.team_members):
+                proposal = p
+                break
+    if not proposal:
         return {"status": "none"}
-    return proposal
+        
+    members = get_member_details(proposal.team_members, db)
+    res = {c.name: getattr(proposal, c.name) for c in proposal.__table__.columns}
+    res["members"] = members
+    res["student_name"] = proposal.student.user.name if proposal.student else "Unknown"
+    res["roll_number"] = proposal.student.roll_number if proposal.student else ""
+    res["guide_name"] = proposal.student.guide.user.name if proposal.student and proposal.student.guide else "Unassigned"
+    res["is_lead"] = (proposal.student_id == student.id)
+    return res
 
 @router.delete("/proposal/{id}")
 def delete_proposal_draft(id: int, payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
@@ -261,11 +317,12 @@ def get_pending_proposals(payload: dict = Depends(get_current_user_payload), db:
     teacher = get_teacher(payload, db)
     proposals = db.query(models.ProjectProposal).join(models.Student).filter(
         models.Student.guide_id == teacher.id,
-        models.ProjectProposal.status == "pending"
+        models.ProjectProposal.status.in_(["pending", "title_approved", "pending_documents"])
     ).all()
     
     res = []
     for p in proposals:
+        members = get_member_details(p.team_members, db)
         res.append({
             "id": p.id,
             "student_name": p.student.user.name,
@@ -278,14 +335,17 @@ def get_pending_proposals(payload: dict = Depends(get_current_user_payload), db:
             "proposal_pdf_url": p.proposal_pdf_url,
             "synopsis_url": p.synopsis_url,
             "literature_survey_url": p.literature_survey_url,
-            "initial_diagram_url": p.initial_diagram_url
+            "initial_diagram_url": p.initial_diagram_url,
+            "status": p.status,
+            "team_members": p.team_members,
+            "members": members
         })
     return res
 
 @router.post("/proposal/{id}/action")
 def evaluate_proposal(
     id: int,
-    action: str = Form(...), # approved, rejected, revision_required
+    action: str = Form(...), # title_approved, approved, rejected, revision_required
     remarks: Optional[str] = Form(None),
     deadline: Optional[str] = Form(None),
     payload: dict = Depends(get_current_user_payload),
@@ -326,7 +386,7 @@ def evaluate_proposal(
             db.flush()
         proposal.project_id = project.id
         
-        # Auto-generate lifecycle milestone check cards
+        # Auto-generate milestones
         milestones = ["Proposal Approved", "Requirement Analysis", "Design Phase", "Implementation", "Testing Suite", "Documentation", "Deployment", "Final Submission"]
         for idx, m_name in enumerate(milestones):
             m = models.ProjectMilestone(
@@ -350,6 +410,35 @@ def evaluate_proposal(
     db.commit()
     
     return {"detail": f"Proposal successfully updated to {action}"}
+
+@router.get("/proposal/all")
+def get_all_proposals(payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can view all proposals")
+    proposals = db.query(models.ProjectProposal).all()
+    res = []
+    for p in proposals:
+        members = get_member_details(p.team_members, db)
+        res.append({
+            "id": p.id,
+            "student_name": p.student.user.name if p.student else "Unknown",
+            "roll_number": p.student.roll_number if p.student else "",
+            "title": p.title,
+            "domain": p.domain,
+            "category": p.category,
+            "problem_statement": p.problem_statement,
+            "technologies_used": p.technologies_used,
+            "proposal_pdf_url": p.proposal_pdf_url,
+            "synopsis_url": p.synopsis_url,
+            "literature_survey_url": p.literature_survey_url,
+            "initial_diagram_url": p.initial_diagram_url,
+            "status": p.status,
+            "guide_name": p.student.guide.user.name if p.student and p.student.guide else "Unassigned",
+            "student_dept": p.student.department.code if p.student and p.student.department else "Unassigned",
+            "team_members": p.team_members,
+            "members": members
+        })
+    return res
 
 # --- WEEKLY PROGRESS MODULE ---
 
