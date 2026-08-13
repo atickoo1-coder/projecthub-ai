@@ -883,7 +883,7 @@ const AdminDashboard = () => {
                 <Plus size={14} />
                 <span>Register Student</span>
               </button>
-              <button onClick={() => setShowUploadModal(true)} className="flex items-center space-x-1 py-2 px-4 bg-slate-100 hover:bg-slate-250 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border rounded-xl font-bold">
+              <button onClick={() => setShowUploadModal(true)} className="flex items-center space-x-1 py-2 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl font-bold transition-all">
                 <Upload size={14} />
                 <span>Bulk Import</span>
               </button>
@@ -2137,14 +2137,14 @@ const AdminDashboard = () => {
 
       {/* BULK UPLOAD MODAL */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in text-xs">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in text-xs text-slate-800 dark:text-slate-100">
           <div className="bg-white dark:bg-slate-900 border rounded-3xl w-full max-w-lg p-8 shadow-2xl relative">
             <h3 className="font-extrabold text-lg mb-2">Bulk Import Students</h3>
-            <p className="text-slate-450 text-[10px] mb-4">Supported formats: Excel (.xlsx), CSV (.csv). Ensure headers match name, email, roll, class details.</p>
+            <p className="text-slate-600 dark:text-slate-400 text-[10px] mb-4">Supported formats: Excel (.xlsx), CSV (.csv). Ensure headers match name, email, roll, class details.</p>
             
             <form onSubmit={handleBulkUpload} className="space-y-4">
               <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Target Department (Fallback if missing in sheet)</label>
+                <label className="block text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase mb-1">Target Department (Fallback if missing in sheet)</label>
                 <select
                   value={uploadDeptId}
                   onChange={e => setUploadDeptId(e.target.value)}
@@ -2158,7 +2158,7 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Select Sheet File</label>
+                <label className="block text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase mb-1">Select Sheet File</label>
                 <input
                   required
                   type="file"
