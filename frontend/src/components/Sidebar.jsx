@@ -43,7 +43,6 @@ const Sidebar = () => {
           { to: '/student/placements', label: 'Placement Board', icon: Briefcase },
           { to: '/student/certificates', label: 'Certificates', icon: Award },
           { to: '/student/publications', label: 'Publications & Patents', icon: BookOpen },
-          { to: `/portfolio/${user.student_profile?.id || user.id}`, label: 'My Portfolio', icon: UserCircle2 },
           { to: '/ai-hub', label: 'AI Workspace', icon: Brain },
           ...common
         ];
