@@ -631,7 +631,7 @@ const AdminDashboard = () => {
       {/* Header Banner */}
       <div className="flex justify-between items-center bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">University Control Center</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight">College Control Center</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage global system parameters, departments, student registers, and academic guides.</p>
         </div>
         <button onClick={triggerReset} className="p-3 bg-white dark:bg-slate-900 border hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl shadow-sm text-sky-500 transition-all">
