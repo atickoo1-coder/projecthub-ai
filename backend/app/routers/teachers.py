@@ -16,7 +16,7 @@ def get_current_teacher(payload: dict = Depends(get_current_user_payload), db: S
         raise HTTPException(status_code=404, detail="Teacher profile not found")
     return user.teacher_profile
 
-@router.get("/students", response_model=List[schemas.StudentOut])
+@router.get("/students", response_model=List[schemas.StudentWithProjectsOut])
 def get_assigned_students(teacher: models.Teacher = Depends(get_current_teacher), db: Session = Depends(get_db)):
     """Retrieve students assigned to the current teacher/guide"""
     return db.query(models.Student).filter(models.Student.guide_id == teacher.id).all()

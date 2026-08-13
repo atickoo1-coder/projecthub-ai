@@ -333,6 +333,10 @@ class ProjectOut(ProjectBase):
     class Config:
         from_attributes = True
 
+class StudentWithProjectsOut(StudentOut):
+    projects: List[ProjectOut] = []
+
+
 # Meeting Schemas
 class MeetingBase(BaseModel):
     title: str

@@ -883,7 +883,7 @@ const TeacherDashboard = () => {
                 <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 px-3 mb-2">Review Categories</h3>
                 {[
                   { id: 'proposals', label: 'Proposals Appraiser', count: lifecycleProposals.length },
-                  { id: 'weekly', label: 'Weekly Progress Grader', count: lifecycleWeeklyLogs.filter(l => l.status === 'submitted').length },
+                  { id: 'weekly', label: 'Weekly Progress Grader', count: lifecycleWeeklyLogs.filter(l => l.status === 'pending' || l.status === 'submitted').length },
                   { id: 'meetings', label: 'Sync Session Minutes', count: lifecycleMeetings.filter(m => m.status === 'requested').length },
                   { id: 'papers', label: 'Research Paper Reviews', count: lifecyclePapers.length },
                   { id: 'grading', label: 'Final Grading Scorecard', count: 0 }
