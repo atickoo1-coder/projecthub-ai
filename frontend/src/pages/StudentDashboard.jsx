@@ -2226,66 +2226,66 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                   {/* Nesting Graphic hierarchy */}
                   <div className="bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200 dark:border-slate-800/80 rounded-2xl flex flex-col md:flex-row items-center justify-around space-y-4 md:space-y-0 text-center">
                     <div>
-                      <span className="text-[10px] text-slate-455 uppercase font-bold block">College</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">College</span>
                       <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100">{user?.student_profile?.college || 'U.C.E'}</span>
                     </div>
                     <ChevronRight className="text-slate-300 hidden md:block" />
                     <div>
-                      <span className="text-[10px] text-slate-455 uppercase font-bold block">Program</span>
-                      <span className="font-extrabold text-sm text-slate-850 dark:text-slate-100">{user?.student_profile?.program || 'B.Tech'}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Program</span>
+                      <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100">{user?.student_profile?.program || 'B.Tech'}</span>
                     </div>
                     <ChevronRight className="text-slate-300 hidden md:block" />
                     <div>
-                      <span className="text-[10px] text-slate-455 uppercase font-bold block">Department</span>
-                      <span className="font-extrabold text-sm text-slate-850 dark:text-slate-100">{user?.student_profile?.department_name || 'CSE'}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Department</span>
+                      <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100">{user?.student_profile?.department_name || 'CSE'}</span>
                     </div>
                     <ChevronRight className="text-slate-300 hidden md:block" />
                     <div>
-                      <span className="text-[10px] text-slate-455 uppercase font-bold block">Section</span>
-                      <span className="font-extrabold text-sm text-slate-850 dark:text-slate-100">Section {user?.student_profile?.section || 'A'}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Section</span>
+                      <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100">Section {user?.student_profile?.section || 'A'}</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-xs leading-normal">
                     <div>
-                      <span className="text-slate-400 font-bold block">Roll Number</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.roll_number}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">Roll Number</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.roll_number}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block">Registration Number</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.reg_number}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">Registration Number</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.reg_number}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block">University Roll</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.univ_roll_number}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">University Roll</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.univ_roll_number}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block">CGPA</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">CGPA</span>
                       <span className="font-extrabold text-sky-500">{user?.student_profile?.cgpa || '8.25'} / 10</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-xs border-t pt-4">
                     <div>
-                      <span className="text-slate-400 font-bold block">Mobile</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.mobile || '9876543210'}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">Mobile</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.mobile || '9876543210'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block">Gender</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.gender || 'Female'}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">Gender</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.gender || 'Female'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block">Date of Birth</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.date_of_birth || '2003-04-12'}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">Date of Birth</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.date_of_birth || '2003-04-12'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block">Admission Year</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-150">{user?.student_profile?.admission_year || '2023'}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-bold block">Admission Year</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{user?.student_profile?.admission_year || '2023'}</span>
                     </div>
                   </div>
 
                   <div className="border-t pt-4 text-xs">
-                    <span className="text-slate-400 font-bold block">Campus Residence / Address</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-bold block">Campus Residence / Address</span>
                     <p className="font-bold text-slate-700 dark:text-slate-200 mt-1">{user?.student_profile?.address || '123 Academic Lane, Campus Town'}</p>
                   </div>
                 </div>
