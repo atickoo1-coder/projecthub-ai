@@ -1988,8 +1988,8 @@ const TeacherDashboard = () => {
       {/* 5. EVALUATION HUB */}
       {activeTab === 'evaluations' && (
         <div className="space-y-8 animate-fade-in">
-          {/* Abstract Evaluator SubSection */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Abstract Evaluator */}
+          <div className="grid grid-cols-1 gap-8">
             <Card title="Abstract reviews Evaluation Panel">
               <div className="space-y-4">
                 <div>
@@ -2058,39 +2058,20 @@ const TeacherDashboard = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Marks (0-10)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            required
-                            value={abstractForm.marks}
-                            onChange={e => setAbstractForm({...abstractForm, marks: parseInt(e.target.value) || 0})}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                          />
+                          <input required type="number" min={0} max={10} value={abstractForm.marks} onChange={e => setAbstractForm({...abstractForm, marks: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Status</label>
-                          <select
-                            value={abstractForm.status}
-                            onChange={e => setAbstractForm({...abstractForm, status: e.target.value})}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                          >
-                            <option value="approved">Approve Abstract</option>
-                            <option value="revision_requested">Request Revision</option>
-                            <option value="rejected">Reject Proposal</option>
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Review Verdict</label>
+                          <select value={abstractForm.status} onChange={e => setAbstractForm({...abstractForm, status: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs">
+                            <option value="approved">Approve Project</option>
+                            <option value="revision_required">Request Revision</option>
+                            <option value="rejected">Reject Project</option>
                           </select>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Reviewer Remarks</label>
-                        <textarea
-                          rows={3}
-                          required
-                          value={abstractForm.remarks}
-                          onChange={e => setAbstractForm({...abstractForm, remarks: e.target.value})}
-                          placeholder="Provide objectives details recommendations..."
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                        />
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Evaluation Comments</label>
+                        <textarea required rows={3} value={abstractForm.remarks} onChange={e => setAbstractForm({...abstractForm, remarks: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
                       </div>
                       <button type="submit" className="py-2 px-5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold">
                         Save Evaluation
@@ -2100,117 +2081,7 @@ const TeacherDashboard = () => {
                 )}
               </div>
             </Card>
-
-            {/* Synopsis Review */}
-            <Card title="Detailed Synopsis Review Portal" subtitle="Problem statement, Methodology, and Literature survey evaluation.">
-              <form onSubmit={handleSynopsisReview} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Select Project</label>
-                  <select
-                    required
-                    value={synopsisForm.project_id}
-                    onChange={e => setSynopsisForm({...synopsisForm, project_id: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs"
-                  >
-                    <option value="">Select project...</option>
-                    {students.map(s => s.projects?.[0] && (
-                      <option key={s.projects[0].id} value={s.projects[0].id}>{s.projects[0].title}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Problem Definition Statement</label>
-                    <textarea rows={2} value={synopsisForm.problem_statement} onChange={e => setSynopsisForm({...synopsisForm, problem_statement: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Literature Survey Coverage</label>
-                    <textarea rows={2} value={synopsisForm.literature_survey} onChange={e => setSynopsisForm({...synopsisForm, literature_survey: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Proposed Methodology</label>
-                    <textarea rows={2} value={synopsisForm.proposed_methodology} onChange={e => setSynopsisForm({...synopsisForm, proposed_methodology: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Expected Outcomes</label>
-                    <textarea rows={2} value={synopsisForm.expected_outcomes} onChange={e => setSynopsisForm({...synopsisForm, expected_outcomes: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Status</label>
-                    <select value={synopsisForm.status} onChange={e => setSynopsisForm({...synopsisForm, status: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs">
-                      <option value="approved">Approve Synopsis</option>
-                      <option value="revision_requested">Revision required</option>
-                      <option value="rejected">Reject Synopsis</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Remarks</label>
-                    <textarea rows={2} value={synopsisForm.remarks} onChange={e => setSynopsisForm({...synopsisForm, remarks: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs" />
-                  </div>
-                </div>
-                <button type="submit" className="py-2 px-5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold">
-                  Submit Synopsis Review
-                </button>
-              </form>
-            </Card>
           </div>
-
-          {/* Weekly logs evaluator */}
-          <Card title="Weekly Progress Logs Verification" subtitle="Approve weekly work done percentage and hours logged.">
-            <div className="space-y-6">
-              {students.some(s => s.projects?.[0]?.progress_updates?.length > 0) ? (
-                students.map(s => s.projects?.[0]?.progress_updates?.map(up => (
-                  <div key={up.id} className="p-4 border rounded-xl flex items-center justify-between bg-slate-50/20 dark:bg-slate-900/10">
-                    <div className="space-y-1">
-                      <span className="font-extrabold text-xs text-sky-500">Student: {s.user.name} • Week {up.week_number}</span>
-                      <p className="text-xs">{up.work_done}</p>
-                      <span className="text-[10px] text-slate-400 block">
-                        Hours Logged: {up.hours_worked} hrs • Progress Increment: {up.progress_percentage}% • Challenges: {up.challenges || 'None'}
-                      </span>
-                    </div>
-
-                    <form onSubmit={handleWeeklyReviewSubmit} className="flex items-center space-x-2">
-                      <input type="hidden" value={up.id} />
-                      <select
-                        required
-                        value={weeklyReviewForm.progress_update_id === String(up.id) ? weeklyReviewForm.status : 'approved'}
-                        onChange={e => setWeeklyReviewForm({
-                          progress_update_id: String(up.id),
-                          status: e.target.value,
-                          feedback: weeklyReviewForm.feedback
-                        })}
-                        className="px-2 py-1.5 bg-white dark:bg-slate-800 border rounded-lg text-xs"
-                      >
-                        <option value="approved">Approve Log</option>
-                        <option value="rejected">Reject Log</option>
-                        <option value="revision_requested">Revision Request</option>
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="Feedback note..."
-                        value={weeklyReviewForm.progress_update_id === String(up.id) ? weeklyReviewForm.feedback : ''}
-                        onChange={e => setWeeklyReviewForm({
-                          progress_update_id: String(up.id),
-                          status: weeklyReviewForm.status || 'approved',
-                          feedback: e.target.value
-                        })}
-                        className="px-2 py-1.5 bg-white dark:bg-slate-800 border rounded-lg text-xs w-48 focus:outline-none"
-                      />
-                      <button type="submit" onClick={() => setWeeklyReviewForm({...weeklyReviewForm, progress_update_id: String(up.id)})} className="py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-[10px] font-bold">
-                        Verify
-                      </button>
-                    </form>
-                  </div>
-                )))
-              ) : (
-                <p className="text-xs text-slate-500 italic text-center py-6">No weekly logs submitted by mentees yet.</p>
-              )}
-            </div>
-          </Card>
 
           {/* Project Report reviews & Plagiarism checks */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
