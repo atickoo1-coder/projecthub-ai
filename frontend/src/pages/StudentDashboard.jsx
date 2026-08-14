@@ -731,30 +731,26 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
   };
 
   const handleStartEditGithub = () => {
-    if (githubStats) {
-      setGithubForm({
-        repo_name: githubStats.repo_name || '',
-        branch: githubStats.branch || 'main',
-        commit_count: githubStats.commit_count || 0,
-        stars: githubStats.stars || 0,
-        issues: githubStats.issues || 0,
-        latest_commit: githubStats.latest_commit || ''
-      });
-    }
+    setGithubForm({
+      repo_name: githubStats?.repo_name || activeProject?.github_repo || '',
+      branch: githubStats?.branch || 'main',
+      commit_count: githubStats?.commit_count || 0,
+      stars: githubStats?.stars || 0,
+      issues: githubStats?.issues || 0,
+      latest_commit: githubStats?.latest_commit || ''
+    });
     setEditingGithub(true);
   };
 
   const handleCancelEditGithub = () => {
-    if (githubStats) {
-      setGithubForm({
-        repo_name: githubStats.repo_name || '',
-        branch: githubStats.branch || 'main',
-        commit_count: githubStats.commit_count || 0,
-        stars: githubStats.stars || 0,
-        issues: githubStats.issues || 0,
-        latest_commit: githubStats.latest_commit || ''
-      });
-    }
+    setGithubForm({
+      repo_name: githubStats?.repo_name || activeProject?.github_repo || '',
+      branch: githubStats?.branch || 'main',
+      commit_count: githubStats?.commit_count || 0,
+      stars: githubStats?.stars || 0,
+      issues: githubStats?.issues || 0,
+      latest_commit: githubStats?.latest_commit || ''
+    });
     setEditingGithub(false);
   };
 
@@ -2768,8 +2764,16 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                 </a>
               </div>
             ) : (
-              <div className="text-center py-10">
-                <p className="text-xs text-slate-500">No GitHub repository configured yet. Click edit to set one up.</p>
+              <div className="text-center py-10 space-y-4">
+                <p className="text-xs text-slate-500">No GitHub repository configured yet.</p>
+                <button
+                  type="button"
+                  onClick={handleStartEditGithub}
+                  className="py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sky-500/10 inline-flex items-center space-x-1.5"
+                >
+                  <Plus size={12} />
+                  <span>Configure GitHub Repository</span>
+                </button>
               </div>
             )}
           </Card>
