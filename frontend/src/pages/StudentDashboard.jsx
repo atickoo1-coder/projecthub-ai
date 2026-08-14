@@ -2136,6 +2136,60 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                 </div>
               </Card>
             )}
+
+            {activeProject && (
+              <Card title="Academic Milestones & Tasks checklist" subtitle="Deadlines and evaluations logged by your advisor guide.">
+                <div className="space-y-4 text-xs leading-normal">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="border-b bg-slate-50 dark:bg-slate-800/40 text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
+                          <th className="py-2 px-3">Milestone Task / Description</th>
+                          <th className="py-2 px-3 text-center">Deadline</th>
+                          <th className="py-2 px-3 text-center">Status</th>
+                          <th className="py-2 px-3 text-center">Evaluation Score</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                        {milestones.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="text-center py-6 text-slate-400 italic">No project milestones configured yet by advisor guide.</td>
+                          </tr>
+                        ) : (
+                          milestones.map((m) => (
+                            <tr key={m.id} className="hover:bg-slate-50/50">
+                              <td className="py-2.5 px-3">
+                                <span className="font-bold text-slate-800 dark:text-slate-200 block">{m.title}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">{m.description || "No description provided."}</span>
+                                {m.feedback && (
+                                  <span className="text-[10px] italic text-sky-500 block mt-0.5">Guide Feedback: "{m.feedback}"</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold text-rose-500">{m.deadline || "TBD"}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                                  m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
+                                  m.status === 'in_progress' ? 'bg-sky-500/10 text-sky-500' : 'bg-amber-500/10 text-amber-500'
+                                }`}>
+                                  {m.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-bold">
+                                {m.status === 'completed' ? (
+                                  <span className="text-emerald-500">{m.marks} / {m.max_marks}</span>
+                                ) : (
+                                  <span className="text-slate-400">Pending / {m.max_marks}</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
 
           <div className="space-y-8">

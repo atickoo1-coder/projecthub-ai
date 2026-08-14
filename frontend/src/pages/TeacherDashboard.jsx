@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { teacherAPI, meetingAPI, aiAPI, chatAPI, lifecycleAPI } from '../services/api';
+import { teacherAPI, meetingAPI, aiAPI, chatAPI, lifecycleAPI, projectAPI } from '../services/api';
 import Card from '../components/Card';
 import { 
   Users, 
@@ -260,6 +260,112 @@ const TeacherDashboard = () => {
   const [chatText, setChatText] = useState('');
   const [chatError, setChatError] = useState(null);
   const chatMessagesEndRef = useRef(null);
+
+  // Milestone / Task Deadlines state
+  const [selectedMilestoneProjectId, setSelectedMilestoneProjectId] = useState('');
+  const [teacherMilestones, setTeacherMilestones] = useState([]);
+  const [editingMilestoneId, setEditingMilestoneId] = useState(null);
+  const [teacherMilestoneForm, setTeacherMilestoneForm] = useState({
+    title: '',
+    description: '',
+    deadline: '',
+    max_marks: 20,
+    status: 'pending',
+    marks: 0,
+    feedback: ''
+  });
+
+  // Fetch milestones for a selected project
+  const loadProjectMilestones = async (projId) => {
+    if (!projId) return;
+    try {
+      const data = await projectAPI.getMilestones(projId);
+      setTeacherMilestones(data || []);
+    } catch (err) {
+      showError("Failed to fetch project milestones.");
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMilestoneProjectId) {
+      loadProjectMilestones(selectedMilestoneProjectId);
+    } else {
+      setTeacherMilestones([]);
+    }
+  }, [selectedMilestoneProjectId]);
+
+  const handleMilestoneFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedMilestoneProjectId) {
+      showError("Please select a project first.");
+      return;
+    }
+    try {
+      if (editingMilestoneId) {
+        // Update milestone
+        await projectAPI.updateMilestone(editingMilestoneId, {
+          title: teacherMilestoneForm.title,
+          description: teacherMilestoneForm.description,
+          deadline: teacherMilestoneForm.deadline,
+          max_marks: parseInt(teacherMilestoneForm.max_marks) || 20,
+          status: teacherMilestoneForm.status,
+          marks: parseInt(teacherMilestoneForm.marks) || 0,
+          feedback: teacherMilestoneForm.feedback
+        });
+        showSuccess("Milestone updated successfully!");
+      } else {
+        // Create milestone
+        await projectAPI.createMilestone(parseInt(selectedMilestoneProjectId), {
+          title: teacherMilestoneForm.title,
+          description: teacherMilestoneForm.description,
+          deadline: teacherMilestoneForm.deadline,
+          max_marks: parseInt(teacherMilestoneForm.max_marks) || 20,
+          status: 'pending',
+          marks: 0,
+          feedback: ''
+        });
+        showSuccess("Milestone created and deadline set!");
+      }
+      // Reset form & reload
+      setTeacherMilestoneForm({
+        title: '',
+        description: '',
+        deadline: '',
+        max_marks: 20,
+        status: 'pending',
+        marks: 0,
+        feedback: ''
+      });
+      setEditingMilestoneId(null);
+      loadProjectMilestones(selectedMilestoneProjectId);
+    } catch (err) {
+      showError("Failed to save milestone.");
+    }
+  };
+
+  const handleStartEditMilestone = (m) => {
+    setEditingMilestoneId(m.id);
+    setTeacherMilestoneForm({
+      title: m.title || '',
+      description: m.description || '',
+      deadline: m.deadline || '',
+      max_marks: m.max_marks || 20,
+      status: m.status || 'pending',
+      marks: m.marks || 0,
+      feedback: m.feedback || ''
+    });
+  };
+
+  const handleDeleteMilestone = async (mId) => {
+    if (!window.confirm("Are you sure you want to delete this milestone/task?")) return;
+    try {
+      await projectAPI.deleteMilestone(mId);
+      showSuccess("Milestone deleted successfully.");
+      loadProjectMilestones(selectedMilestoneProjectId);
+    } catch (err) {
+      showError("Failed to delete milestone.");
+    }
+  };
 
   // Alerts/Toasts
   const [successMsg, setSuccessMsg] = useState('');
@@ -883,6 +989,7 @@ const TeacherDashboard = () => {
           { id: 'mentees', label: 'Mentees Directory', icon: BookOpen },
           { id: 'evaluations', label: 'Evaluation Hub', icon: FileCheck },
           { id: 'rubrics', label: 'Marks Rubric', icon: BarChart },
+          { id: 'deadlines', label: 'Milestone Deadlines', icon: Clock },
           { id: 'discussion', label: 'Communication Forum', icon: MessageSquare },
           { id: 'calendar', label: 'Calendar Planner', icon: Calendar },
           { id: 'exports', label: 'Export Reports', icon: Download }
@@ -2499,6 +2606,248 @@ const TeacherDashboard = () => {
                   <span className="text-xs text-slate-450 italic">No marks logged to chart yet.</span>
                 )}
               </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* 6. MILESTONE DEADLINES & TASK MANAGEMENT */}
+      {activeTab === 'deadlines' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in text-slate-800 dark:text-slate-100">
+          {/* Left panel: Add/Edit Milestone Form */}
+          <div className="lg:col-span-1">
+            <Card 
+              title={editingMilestoneId ? "Edit Milestone / Deadline" : "Define New Milestone / Task"} 
+              subtitle="Establish deadlines and expectations for mentees."
+            >
+              <form onSubmit={handleMilestoneFormSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Select Student Project *</label>
+                  <select
+                    required
+                    value={selectedMilestoneProjectId}
+                    onChange={e => {
+                      setSelectedMilestoneProjectId(e.target.value);
+                      setEditingMilestoneId(null);
+                      setTeacherMilestoneForm({
+                        title: '',
+                        description: '',
+                        deadline: '',
+                        max_marks: 20,
+                        status: 'pending',
+                        marks: 0,
+                        feedback: ''
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="">Select a student project...</option>
+                    {students.map(s => {
+                      const proj = s.projects?.[0];
+                      if (!proj) return null;
+                      return (
+                        <option key={proj.id} value={proj.id}>
+                          {s.name} - {proj.title}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Milestone Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Database normalizations SRS"
+                    value={teacherMilestoneForm.title}
+                    onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, title: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Task Description</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Details about expected deliverables, architectures..."
+                    value={teacherMilestoneForm.description}
+                    onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, description: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Target Deadline *</label>
+                    <input
+                      type="date"
+                      required
+                      value={teacherMilestoneForm.deadline}
+                      onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, deadline: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Max Marks *</label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={teacherMilestoneForm.max_marks}
+                      onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, max_marks: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+
+                {editingMilestoneId && (
+                  <div className="border-t pt-4 space-y-4">
+                    <span className="text-[10px] font-bold text-sky-500 uppercase block tracking-wider">Evaluation & Sign-off</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Status</label>
+                        <select
+                          value={teacherMilestoneForm.status}
+                          onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, status: e.target.value})}
+                          className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed / Approved</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Marks Awarded</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={teacherMilestoneForm.max_marks}
+                          value={teacherMilestoneForm.marks}
+                          onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, marks: parseInt(e.target.value) || 0})}
+                          className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-1">Feedback Remarks</label>
+                      <input
+                        type="text"
+                        placeholder="Great implementation..."
+                        value={teacherMilestoneForm.feedback}
+                        onChange={e => setTeacherMilestoneForm({...teacherMilestoneForm, feedback: e.target.value})}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex space-x-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-sm transition-colors"
+                  >
+                    {editingMilestoneId ? "Update Milestone" : "Define Milestone"}
+                  </button>
+                  {editingMilestoneId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingMilestoneId(null);
+                        setTeacherMilestoneForm({
+                          title: '',
+                          description: '',
+                          deadline: '',
+                          max_marks: 20,
+                          status: 'pending',
+                          marks: 0,
+                          feedback: ''
+                        });
+                      }}
+                      className="py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-205 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </Card>
+          </div>
+
+          {/* Right panel: Active Milestones list */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card 
+              title="Active Mentees Project Milestones & Tasks" 
+              subtitle="Current logged milestones checklist and deadline schedule."
+            >
+              {!selectedMilestoneProjectId ? (
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500 italic text-xs">
+                  Please select a student project from the left form to view or configure milestones.
+                </div>
+              ) : teacherMilestones.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500 italic text-xs">
+                  No milestones defined for this project yet. Use the left form to add one.
+                </div>
+              ) : (
+                <div className="overflow-x-auto text-xs leading-normal">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b bg-slate-50 dark:bg-slate-800/40 text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
+                        <th className="py-2 px-3">Milestone Title & Description</th>
+                        <th className="py-2 px-3 text-center">Deadline</th>
+                        <th className="py-2 px-3 text-center">Status</th>
+                        <th className="py-2 px-3 text-center">Evaluation Score</th>
+                        <th className="py-2 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                      {teacherMilestones.map((m) => (
+                        <tr key={m.id} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 block">{m.title}</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">{m.description || "No description provided."}</span>
+                            {m.feedback && (
+                              <span className="text-[10px] italic text-sky-500 block mt-1">Feedback: "{m.feedback}"</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center font-bold text-slate-650 dark:text-slate-300">
+                            {m.deadline || "No Deadline"}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                              m.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
+                              m.status === 'in_progress' ? 'bg-sky-500/10 text-sky-500' : 'bg-amber-500/10 text-amber-500'
+                            }`}>
+                              {m.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center font-bold">
+                            {m.status === 'completed' ? (
+                              <span className="text-emerald-500">{m.marks} / {m.max_marks}</span>
+                            ) : (
+                              <span className="text-slate-400">Pending / {m.max_marks}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button
+                              onClick={() => handleStartEditMilestone(m)}
+                              className="text-sky-500 hover:text-sky-600 font-bold"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMilestone(m.id)}
+                              className="text-rose-500 hover:text-rose-600 font-bold"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </Card>
           </div>
         </div>
