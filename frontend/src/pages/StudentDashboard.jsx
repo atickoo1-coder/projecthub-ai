@@ -2632,7 +2632,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => editingGithub ? handleCancelEditGithub() : handleStartEditGithub()}
-                    className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-855 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
+                    className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-205 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
                   >
                     <Edit2 size={12} />
                     <span>{editingGithub ? "Cancel" : "Edit Settings"}</span>
@@ -2641,7 +2641,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                     <button
                       onClick={handleSyncGithub}
                       disabled={syncingGithub}
-                      className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all"
+                      className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-205 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
                     >
                       <RefreshCw className={syncingGithub ? "animate-spin" : ""} size={12} />
                       <span>Refresh Repo</span>
@@ -2785,7 +2785,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
               activeProject && (
                 <button
                   onClick={() => editingLive ? handleCancelEditLive() : setEditingLive(true)}
-                  className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-700 dark:text-slate-200"
+                  className="flex items-center space-x-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-205 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
                 >
                   <Edit2 size={12} />
                   <span>{editingLive ? "Cancel" : "Edit Credentials"}</span>
@@ -2831,7 +2831,7 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
 
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">API Endpoint Mock</span>
-                  <span className="font-mono text-xs text-slate-700 dark:text-slate-300 block bg-slate-100 dark:bg-slate-850 p-2 rounded-xl border">
+                  <span className="font-mono text-xs text-slate-700 dark:text-slate-200 block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl">
                     https://api.projecthub.edu/projects/{activeProject?.id || 1}/live
                   </span>
                 </div>
@@ -2842,8 +2842,8 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
                     <QrCode size={80} className="text-slate-850" />
                   </div>
                   <div className="text-xs leading-normal">
-                    <span className="font-bold text-slate-800 dark:text-slate-155 block">Mobile Web QR Code</span>
-                    <p className="text-slate-455 text-[10px] mt-1">Scan this code to instantly open the compiled prototype on any smartphone device.</p>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">Mobile Web QR Code</span>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-1">Scan this code to instantly open the compiled prototype on any smartphone device.</p>
                     <span className="bg-sky-500/10 text-sky-500 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider block mt-2.5 w-fit">
                       Active Deploy
                     </span>
