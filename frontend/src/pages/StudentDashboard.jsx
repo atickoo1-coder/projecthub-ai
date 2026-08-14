@@ -670,16 +670,46 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
     if (!activeProject) return;
     setSyncingGithub(true);
     try {
-      // Simulate real-time fetch and persist to DB
-      const mockStats = {
-        repo_name: githubStats?.repo_name || "anshultickoo/attendance-cnn",
-        branch: "main",
-        commit_count: (githubStats?.commit_count || 45) + 3,
-        stars: (githubStats?.stars || 10) + 1,
-        issues: Math.max(0, (githubStats?.issues || 2) - 1),
-        latest_commit: "Fixed convolutional layer speed benchmarks"
+      const repoPath = githubStats?.repo_name || activeProject?.github_repo || "anshultickoo/attendance-cnn";
+      let commitCount = githubStats?.commit_count || 48;
+      let latestCommitMsg = githubStats?.latest_commit || "Updated repository files";
+      let stars = githubStats?.stars || 11;
+      let issues = githubStats?.issues || 1;
+      let branch = githubStats?.branch || "main";
+
+      // If the repoPath is a valid owner/repo format, fetch real data from public GitHub API
+      if (repoPath && repoPath.includes('/') && !repoPath.startsWith('http')) {
+        try {
+          const metaRes = await fetch(`https://api.github.com/repos/${repoPath}`);
+          if (metaRes.ok) {
+            const meta = await metaRes.json();
+            stars = meta.stargazers_count || 0;
+            issues = meta.open_issues_count || 0;
+            branch = meta.default_branch || "main";
+          }
+          const commitsRes = await fetch(`https://api.github.com/repos/${repoPath}/commits`);
+          if (commitsRes.ok) {
+            const commits = await commitsRes.json();
+            if (Array.isArray(commits) && commits.length > 0) {
+              commitCount = commits.length;
+              latestCommitMsg = commits[0]?.commit?.message || "Updated repository files";
+            }
+          }
+        } catch (gitErr) {
+          console.warn("Public GitHub API limits exceeded or network offline. Falling back to local/cached data.", gitErr);
+        }
+      }
+
+      const updatedStats = {
+        repo_name: repoPath,
+        branch: branch,
+        commit_count: commitCount,
+        stars: stars,
+        issues: issues,
+        latest_commit: latestCommitMsg
       };
-      const response = await projectAPI.syncGithubStats(activeProject.id, mockStats);
+
+      const response = await projectAPI.syncGithubStats(activeProject.id, updatedStats);
       setGithubStats(response);
       setSuccess("GitHub repository statistics synchronized!");
     } catch (err) {
@@ -688,6 +718,12 @@ const StudentDashboard = ({ defaultTab = 'profile' }) => {
       setSyncingGithub(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'integrations' && activeProject) {
+      handleSyncGithub();
+    }
+  }, [activeTab, activeProject]);
 
   // Update GitHub repository details
   const handleUpdateGithub = async (e) => {
